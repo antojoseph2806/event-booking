@@ -1,9 +1,151 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Calendar, Users, Sparkles, ArrowRight, Menu, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Slider from 'react-slick'
+import { supabase } from '../lib/supabase'
+import EventCard from '../components/EventCard'
+import { handleBookingAuth, createBookingWithTicket } from '../lib/authUtils'
+
+// Import slick carousel CSS
+import 'slick-carousel/slick/slick.css'
+import 'slick-carousel/slick/slick-theme.css'
+
+// Additional carousel CSS overrides
+const carouselStyles = `
+  .slick-slider {
+    position: relative;
+    display: block;
+    box-sizing: border-box;
+  }
+  
+  .slick-list {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .slick-track {
+    position: relative;
+    top: 0;
+    left: 0;
+    display: flex !important;
+  }
+  
+  .slick-slide {
+    display: none;
+    height: auto;
+    min-height: 1px;
+  }
+  
+  .slick-initialized .slick-slide {
+    display: block;
+  }
+`;
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = carouselStyles;
+  document.head.appendChild(style);
+}
 
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [events, setEvents] = useState([])
+  const [loadingEvents, setLoadingEvents] = useState(true)
+  const [bookingLoading, setBookingLoading] = useState(false)
+  const navigate = useNavigate()
+
+  const handleBookEvent = async (event) => {
+    setBookingLoading(true);
+    
+    try {
+      // Handle authentication check and redirect logic
+      const isAuthenticated = await handleBookingAuth(
+        navigate,
+        async (user, accessToken) => {
+          // User is authenticated with valid access token, create booking
+          console.log('Creating booking for authenticated user');
+          const ticketData = await createBookingWithTicket(user, event, 1, accessToken);
+          
+          // Navigate to ticket page with ticket data
+          console.log('Navigating to ticket page');
+          navigate('/ticket', { 
+            state: { ticketData }
+          });
+        },
+        '/dashboard' // Redirect path after login
+      );
+      
+      // If user was already authenticated, the booking was handled in the callback
+      if (!isAuthenticated) {
+        // User was redirected to login, so we don't need to do anything else
+        console.log('User not authenticated, redirected to login');
+        return;
+      }
+    } catch (error) {
+      console.error('Booking error:', error);
+      
+      // Check if this is an authentication error
+      if (error.message === 'SESSION_EXPIRED' || error.message.includes('expired') || error.message.includes('Invalid token')) {
+        // The authUtils should handle the redirect
+        console.log('Authentication error in Home page booking, user will be redirected');
+        navigate('/login');
+      } else {
+        // Show error for other types of failures
+        alert(error.message || 'Failed to book event');
+      }
+    } finally {
+      setBookingLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchEvents()
+  }, [])
+
+  const fetchEvents = async () => {
+    try {
+      console.log('Fetching events from Supabase...')
+      
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('date', { ascending: true })
+        .limit(10)
+
+      console.log('Supabase response:', { data, error })
+      
+      if (error) {
+        console.error('Supabase Error:', error)
+        throw error
+      }
+      
+      console.log('Events fetched:', data)
+      console.log('Number of events:', data?.length || 0)
+      setEvents(data || [])
+    } catch (error) {
+      console.error('Error fetching events:', error)
+      // Set empty array to show the empty state
+      setEvents([])
+    } finally {
+      setLoadingEvents(false)
+    }
+  }
+
+  // Carousel settings
+  const carouselSettings = {
+    dots: true,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    autoplay: false,
+    pauseOnHover: true,
+    adaptiveHeight: false
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
@@ -75,6 +217,50 @@ export default function Home() {
               </Link>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Events Carousel Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Upcoming Events</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Discover amazing events happening near you. Register now and secure your spot!
+            </p>
+          </div>
+
+          {loadingEvents ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+            </div>
+          ) : events.length > 0 ? (
+            <div className="px-4 md:px-8 carousel-container">
+              <div className="text-center mb-4">
+                <p className="text-sm text-gray-500">Found {events.length} events</p>
+              </div>
+              <Slider {...carouselSettings}>
+                {events.map((event) => (
+                  <div key={event.id} className="px-2 h-full">
+                    <EventCard 
+                      event={event} 
+                      onBookEvent={handleBookEvent}
+                      loading={bookingLoading}
+                    />
+                  </div>
+                ))}
+              </Slider>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No events available</h3>
+              <p className="text-gray-600 mb-6">Check back later for upcoming events!</p>
+              <Link to="/register" className="btn-primary inline-flex items-center">
+                Be the first to create an event
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 

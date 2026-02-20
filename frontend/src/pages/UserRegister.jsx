@@ -37,17 +37,31 @@ export default function UserRegister() {
     setLoading(true)
 
     try {
+      console.log('Attempting registration with:', { email: formData.email })
       const { error } = await signUp(formData.email, formData.password, {
         name: formData.name,
         role: 'user'
       })
       
-      if (error) throw error
+      if (error) {
+        console.error('Registration error:', error)
+        // Provide more user-friendly error messages
+        if (error.message.includes('email')) {
+          setError('This email is already registered. Please use a different email or try logging in.')
+        } else if (error.message.includes('password')) {
+          setError('Password is too weak. Please use a stronger password.')
+        } else {
+          setError(error.message || 'Registration failed. Please try again.')
+        }
+        throw error
+      }
       
-      // Immediate navigation without waiting
-      navigate('/dashboard', { replace: true })
+      console.log('Registration successful')
+      // Show success message and redirect to login
+      alert('Registration successful! Please check your email for confirmation (if required) and then log in.')
+      navigate('/login', { replace: true })
     } catch (err) {
-      setError(err.message)
+      // Error already handled above
       setLoading(false)
     }
   }

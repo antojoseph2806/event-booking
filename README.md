@@ -11,6 +11,8 @@ A premium, fully responsive event booking platform built with React, Tailwind CS
 - 👤 User and Admin dashboards
 - 📊 Real-time analytics
 - 🎫 Event booking system
+- 🖼️ Image upload for events (Supabase Storage)
+- 📁 Direct file upload instead of manual URLs
 
 ## Tech Stack
 
@@ -141,6 +143,33 @@ Backend will run on `http://localhost:8000`
 - Optimized images
 - Minimal bundle size
 - Fast API responses
+
+## Setting up Image Upload
+
+To enable image uploads for events, you need to set up Supabase Storage:
+
+### Quick Setup:
+1. Run the test script to check current setup:
+```bash
+cd backend
+python test_storage_setup.py
+```
+
+2. If setup is incomplete, follow the detailed guide in `SUPABASE_STORAGE_SETUP.md`
+
+### Manual Setup:
+1. Go to your [Supabase Dashboard](https://app.supabase.com)
+2. Select your project
+3. Navigate to Storage > Buckets
+4. Click "New Bucket"
+5. Configure:
+   - Name: `event-images`
+   - Public: ✅ Yes
+   - File size limit: 5242880 bytes (5MB)
+   - Allowed MIME types: `image/*`
+6. Set bucket policies for authenticated uploads and public read access
+
+For detailed step-by-step instructions, see [SUPABASE_STORAGE_SETUP.md](SUPABASE_STORAGE_SETUP.md)
 
 ## Creating Admin User
 

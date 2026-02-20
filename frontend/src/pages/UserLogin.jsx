@@ -17,14 +17,40 @@ export default function UserLogin() {
     setLoading(true)
 
     try {
+      console.log('Attempting login with:', { email })
       const { error } = await signIn(email, password)
       
-      if (error) throw error
+      if (error) {
+        console.error('Login error:', error)
+        // Provide more user-friendly error messages
+        if (error.message.includes('email') && error.message.includes('confirmed')) {
+          setError('Please confirm your email address before logging in. Check your inbox for the confirmation email.')
+        } else if (error.message.includes('Invalid login credentials')) {
+          setError('Invalid email or password. Please check your credentials and try again.')
+        } else if (error.message.includes('400')) {
+          setError('Authentication service error. This might be due to email confirmation requirements. Please check your email or contact support.')
+        } else {
+          setError(error.message || 'Login failed. Please try again.')
+        }
+        throw error
+      }
       
-      // Immediate navigation without waiting
-      navigate('/dashboard', { replace: true })
+      console.log('Login successful')
+      
+      // Check if there's a redirect path stored
+      const redirectPath = localStorage.getItem('redirectAfterLogin');
+      
+      if (redirectPath) {
+        // Clear the redirect path from localStorage
+        localStorage.removeItem('redirectAfterLogin');
+        // Navigate to the stored path
+        navigate(redirectPath, { replace: true });
+      } else {
+        // Default navigation to dashboard
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
-      setError(err.message)
+      // Error already handled above
       setLoading(false)
     }
   }

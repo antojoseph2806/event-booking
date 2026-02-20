@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Sidebar from '../components/Sidebar'
+import EventCard from '../components/EventCard'
 import { Calendar, Ticket, TrendingUp, Clock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { createBookingWithTicket } from '../lib/authUtils'
 
 export default function UserDashboard() {
   const { user, loading } = useAuth()
@@ -11,6 +13,7 @@ export default function UserDashboard() {
   const [bookings, setBookings] = useState([])
   const [events, setEvents] = useState([])
   const [loadingData, setLoadingData] = useState(true)
+  const [loadingBooking, setLoadingBooking] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -47,6 +50,63 @@ export default function UserDashboard() {
       console.error('Error fetching data:', error)
     } finally {
       setLoadingData(false)
+    }
+  }
+
+  const handleBookEvent = async (event) => {
+    // Check if already booked
+    const alreadyBooked = bookings.some(b => b.event_id === event.id);
+    if (alreadyBooked) {
+      alert('You have already booked this event. Check "My Bookings" to view your ticket.');
+      return;
+    }
+
+    // Import the auth utility
+    const { handleBookingAuth, createBookingWithTicket } = await import('../lib/authUtils');
+    
+    try {
+      setLoadingBooking(true);
+      
+      // Handle authentication check and booking process
+      const isAuthenticated = await handleBookingAuth(
+        navigate,
+        async (authenticatedUser, accessToken) => {
+          // User is authenticated with valid access token, proceed with booking
+          console.log('Creating booking for authenticated user from dashboard');
+          const ticketData = await createBookingWithTicket(authenticatedUser, event, 1, accessToken);
+          
+          // Refresh bookings list
+          await fetchData();
+          
+          // Navigate to the ticket page with complete ticket data
+          console.log('Navigating to ticket page');
+          navigate('/ticket', { 
+            state: { ticketData }
+          });
+        },
+        '/dashboard' // Redirect path after login
+      );
+      
+      // If user was not authenticated, they've been redirected to login
+      // If they were authenticated, the booking was handled in the callback
+      if (!isAuthenticated) {
+        console.log('User not authenticated, redirected to login');
+        return; // User redirected to login, nothing more to do
+      }
+    } catch (error) {
+      console.error('Booking error:', error);
+      
+      // Check if this is an authentication error
+      if (error.message === 'SESSION_EXPIRED' || error.message.includes('expired') || error.message.includes('Invalid token')) {
+        // The handleBookingAuth should have already handled the redirect
+        console.log('Authentication error handled by auth utility');
+        navigate('/login');
+      } else {
+        // Show error for other types of failures
+        alert(error.message || 'Failed to book event');
+      }
+    } finally {
+      setLoadingBooking(false);
     }
   }
 
@@ -119,29 +179,18 @@ export default function UserDashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {events.map((event) => (
-                  <div key={event.id} className="bg-gray-50 rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                    {event.image_url && (
-                      <img
-                        src={event.image_url}
-                        alt={event.title}
-                        className="w-full h-48 object-cover"
-                      />
-                    )}
-                    <div className="p-4">
-                      <h3 className="font-semibold text-lg mb-2">{event.title}</h3>
-                      <div className="flex items-center text-gray-600 text-sm mb-1">
-                        <Calendar className="w-4 h-4 mr-2" />
-                        {new Date(event.date).toLocaleDateString()}
-                      </div>
-                      <p className="text-gray-600 text-sm mb-2">{event.location}</p>
-                      <p className="text-primary font-semibold mb-3">${event.price}</p>
-                      <button className="w-full bg-primary text-white py-2 rounded-lg hover:bg-secondary transition-colors">
-                        Book Now
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                {events.map((event) => {
+                  const isBooked = bookings.some(b => b.event_id === event.id);
+                  return (
+                    <EventCard 
+                      key={event.id} 
+                      event={event} 
+                      onBookEvent={handleBookEvent}
+                      loading={loadingBooking}
+                      isBooked={isBooked}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>

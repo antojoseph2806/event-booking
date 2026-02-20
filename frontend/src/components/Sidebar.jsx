@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { 
   Calendar, 
@@ -19,6 +19,7 @@ export default function Sidebar({ isAdmin = false }) {
   const [isOpen, setIsOpen] = useState(false)
   const { signOut, user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleLogout = async () => {
     await signOut()
@@ -29,17 +30,14 @@ export default function Sidebar({ isAdmin = false }) {
     { icon: Home, label: 'Dashboard', path: '/dashboard' },
     { icon: Ticket, label: 'My Bookings', path: '/dashboard/bookings' },
     { icon: Calendar, label: 'Browse Events', path: '/dashboard/events' },
-    { icon: User, label: 'Profile', path: '/dashboard/profile' },
-    { icon: Settings, label: 'Settings', path: '/dashboard/settings' }
+    { icon: User, label: 'Profile', path: '/dashboard/profile' }
   ]
 
   const adminMenuItems = [
     { icon: Home, label: 'Dashboard', path: '/admin/dashboard' },
     { icon: Calendar, label: 'Manage Events', path: '/admin/dashboard/events' },
     { icon: Users, label: 'Users', path: '/admin/dashboard/users' },
-    { icon: Ticket, label: 'Bookings', path: '/admin/dashboard/bookings' },
-    { icon: BarChart, label: 'Analytics', path: '/admin/dashboard/analytics' },
-    { icon: Settings, label: 'Settings', path: '/admin/dashboard/settings' }
+    { icon: Ticket, label: 'Bookings', path: '/admin/dashboard/bookings' }
   ]
 
   const menuItems = isAdmin ? adminMenuItems : userMenuItems
@@ -111,7 +109,11 @@ export default function Sidebar({ isAdmin = false }) {
                 <Link
                   to={item.path}
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gradient-to-r hover:from-primary hover:to-secondary hover:text-white transition-all duration-200 group"
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
+                    location.pathname === item.path
+                      ? 'bg-gradient-to-r from-primary to-secondary text-white'
+                      : 'text-gray-700 hover:bg-gradient-to-r hover:from-primary hover:to-secondary hover:text-white'
+                  }`}
                 >
                   <item.icon className="w-5 h-5" />
                   <span className="font-medium">{item.label}</span>

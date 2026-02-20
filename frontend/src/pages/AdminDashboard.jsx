@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Sidebar from '../components/Sidebar'
 import { Users, Calendar, Ticket, DollarSign, TrendingUp, Activity } from 'lucide-react'
@@ -201,7 +201,9 @@ export default function AdminDashboard() {
               <div className="card">
                 <h2 className="text-xl font-bold mb-6">Quick Actions</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <button className="btn-primary">Create Event</button>
+                  <Link to="/admin/dashboard/events" className="btn-primary text-center">
+                    Manage Events
+                  </Link>
                   <button className="btn-secondary">View All Users</button>
                   <button className="btn-secondary">Export Reports</button>
                   <button className="btn-secondary">Settings</button>
