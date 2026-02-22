@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Shield, Mail, Lock, ArrowLeft } from 'lucide-react'
+import './AdminLogin.css'
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('')
@@ -33,58 +34,66 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <Link to="/" className="inline-flex items-center text-white hover:text-gray-300 mb-8 transition-colors">
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Home
+    <div className="admin-login-container">
+      <div className="admin-login-screen">
+        {/* Background Orbs */}
+        <div className="bg-orb orb-1"></div>
+        <div className="bg-orb orb-2"></div>
+
+        {/* Back Button */}
+        <Link to="/" className="back-nav">
+          <ArrowLeft />
+          <span>Back to Home</span>
         </Link>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <div className="flex items-center justify-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-gray-700 to-gray-900 rounded-full flex items-center justify-center">
-              <Shield className="w-8 h-8 text-white" />
+        {/* Login Content */}
+        <div className="login-content">
+          {/* Admin Icon */}
+          <div className="admin-icon-container">
+            <div className="admin-icon-wrapper">
+              <Shield />
             </div>
           </div>
 
-          <h2 className="text-3xl font-bold text-center mb-2">Admin Portal</h2>
-          <p className="text-gray-600 text-center mb-8">Secure admin access</p>
+          {/* Title Section */}
+          <div className="admin-title-section">
+            <h1 className="admin-title">Admin Portal</h1>
+            <p className="admin-subtitle">Secure admin access</p>
+          </div>
 
+          {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            <div className="error-message">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Admin Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="admin-form">
+            <div className="form-group">
+              <label className="form-label">Admin Email</label>
+              <div className="input-wrapper">
+                <Mail className="input-icon" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="input-field pl-10"
+                  className="admin-input"
                   placeholder="Enter admin email"
                   required
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <div className="input-wrapper">
+                <Lock className="input-icon" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input-field pl-10"
+                  className="admin-input"
                   placeholder="Enter password"
                   required
                 />
@@ -94,16 +103,15 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-gray-700 to-gray-900 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="admin-submit-btn"
             >
               {loading ? 'Signing in...' : 'Admin Sign In'}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <Link to="/login" className="text-sm text-gray-500 hover:text-primary transition-colors">
-              User Login
-            </Link>
+          {/* User Login Link */}
+          <div className="user-login-link">
+            <Link to="/login">User Login</Link>
           </div>
         </div>
       </div>

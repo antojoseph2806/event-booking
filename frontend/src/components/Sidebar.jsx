@@ -79,7 +79,7 @@ export default function Sidebar({ isAdmin = false }) {
               <Calendar className="w-8 h-8 text-primary" />
             )}
             <span className="text-xl font-bold">
-              {isAdmin ? 'Admin Panel' : 'EventHub'}
+              {isAdmin ? 'Admin Panel' : 'HyperMoth'}
             </span>
           </div>
         </div>

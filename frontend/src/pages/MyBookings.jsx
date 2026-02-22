@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import Sidebar from '../components/Sidebar'
-import { Calendar, MapPin, DollarSign, Ticket, QrCode, Download, Eye } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import QRCode from 'qrcode'
+import './MyBookings.css'
 
 export default function MyBookings() {
-  const { user, loading } = useAuth()
+  const { user, loading, signOut } = useAuth()
   const navigate = useNavigate()
   const [bookings, setBookings] = useState([])
   const [loadingData, setLoadingData] = useState(true)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -41,8 +41,7 @@ export default function MyBookings() {
     }
   }
 
-  const handleViewQR = async (booking) => {
-    // Navigate to ticket page with booking data
+  const handleViewTicket = (booking) => {
     navigate('/ticket', {
       state: {
         ticketData: {
@@ -61,15 +60,13 @@ export default function MyBookings() {
 
   const handleDownloadQR = async (booking) => {
     try {
-      // Generate QR code data
       const qrData = JSON.stringify({
-        booking_id: booking.id,
-        event_id: booking.event_id,
-        user_id: booking.user_id,
-        quantity: booking.quantity
+        ticketId: booking.id,
+        userId: booking.user_id,
+        eventId: booking.event_id,
+        timestamp: booking.created_at
       })
 
-      // Generate QR code as data URL
       const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
         width: 400,
         margin: 2,
@@ -79,7 +76,6 @@ export default function MyBookings() {
         }
       })
 
-      // Create download link
       const link = document.createElement('a')
       link.href = qrCodeDataUrl
       link.download = `ticket-${booking.events?.title?.replace(/\s+/g, '-')}-${booking.id}.png`
@@ -94,10 +90,14 @@ export default function MyBookings() {
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  const formatTime = (dateString) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
     })
@@ -105,121 +105,133 @@ export default function MyBookings() {
 
   if (loading || loadingData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="bookings-container">
+        <div className="bookings-screen">
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p className="loading-text">Loading Bookings...</p>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      
-      <main className="flex-1 lg:ml-0 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8 mt-16 lg:mt-0">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-              My Bookings
-            </h1>
-            <p className="text-gray-600">View and manage your event bookings</p>
-          </div>
+    <div className="bookings-container">
+      <div className="bookings-screen">
+        {/* Background Orbs */}
+        <div className="bg-orb orb-1"></div>
+        <div className="bg-orb orb-2"></div>
+        <div className="bg-orb orb-3"></div>
 
-          {/* Bookings List */}
+        {/* Header */}
+        <header className="bookings-header">
+          <button className="back-btn" onClick={() => navigate('/dashboard')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <h1 className="header-title">My Bookings</h1>
+          <div className="menu-icon" onClick={() => setMenuOpen(!menuOpen)}>
+            <div className="menu-line"></div>
+            <div className="menu-line"></div>
+            <div className="menu-line"></div>
+          </div>
+        </header>
+
+        {/* Dropdown Menu */}
+        {menuOpen && (
+          <div className="dropdown-menu">
+            <button className="menu-item" onClick={() => { navigate('/dashboard'); setMenuOpen(false); }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              </svg>
+              Dashboard
+            </button>
+            <button className="menu-item" onClick={() => { navigate('/dashboard/profile'); setMenuOpen(false); }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              Profile
+            </button>
+            <button className="menu-item logout" onClick={async () => { await signOut(); navigate('/'); }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              Logout
+            </button>
+          </div>
+        )}
+
+        {/* Bookings Content */}
+        <div className="bookings-content">
           {bookings.length === 0 ? (
-            <div className="card text-center py-12">
-              <Ticket className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No bookings yet</h3>
-              <p className="text-gray-600 mb-6">Start booking events to see them here</p>
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="btn-primary"
-              >
+            <div className="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <h3>No Bookings Yet</h3>
+              <p>Start booking events to see them here</p>
+              <button className="browse-btn" onClick={() => navigate('/dashboard')}>
                 Browse Events
               </button>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="bookings-list">
               {bookings.map((booking) => (
-                <div key={booking.id} className="card hover:shadow-lg transition-shadow">
-                  <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Event Image */}
-                    <div className="lg:w-64 h-48 lg:h-auto rounded-lg overflow-hidden flex-shrink-0">
-                      <img
-                        src={booking.events?.image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'}
-                        alt={booking.events?.title}
-                        className="w-full h-full object-cover"
-                      />
+                <div key={booking.id} className="booking-card">
+                  <div className="booking-image">
+                    <img
+                      src={booking.events?.image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'}
+                      alt={booking.events?.title}
+                    />
+                    <div className="image-overlay"></div>
+                    <span className={`status-badge ${
+                      new Date(booking.events?.date) > new Date() ? 'upcoming' : 'past'
+                    }`}>
+                      {new Date(booking.events?.date) > new Date() ? 'Upcoming' : 'Past'}
+                    </span>
+                  </div>
+
+                  <div className="booking-details">
+                    <h3 className="booking-title">{booking.events?.title}</h3>
+                    
+                    <div className="booking-info">
+                      <div className="info-row">
+                        <span className="info-label">Date</span>
+                        <span className="info-value">{formatDate(booking.events?.date)} • {formatTime(booking.events?.date)}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-label">Location</span>
+                        <span className="info-value">{booking.events?.location}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-label">Tickets</span>
+                        <span className="info-value">{booking.quantity} {booking.quantity === 1 ? 'Ticket' : 'Tickets'}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-label">Total</span>
+                        <span className="info-value price">₹{(booking.events?.price * booking.quantity).toFixed(2)}</span>
+                      </div>
                     </div>
 
-                    {/* Booking Details */}
-                    <div className="flex-1">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4">
-                        <div>
-                          <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                            {booking.events?.title}
-                          </h3>
-                          <p className="text-gray-600 mb-4">{booking.events?.description}</p>
-                        </div>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          new Date(booking.events?.date) > new Date()
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {new Date(booking.events?.date) > new Date() ? 'Upcoming' : 'Past'}
-                        </span>
-                      </div>
+                    <div className="booking-actions">
+                      <button className="action-btn primary" onClick={() => handleViewTicket(booking)}>
+                        View Ticket
+                      </button>
+                      <button className="action-btn secondary" onClick={() => handleDownloadQR(booking)}>
+                        Download QR
+                      </button>
+                    </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                        <div className="flex items-center text-gray-700">
-                          <Calendar className="w-5 h-5 mr-2 text-primary" />
-                          <span>{formatDate(booking.events?.date)}</span>
-                        </div>
-                        <div className="flex items-center text-gray-700">
-                          <MapPin className="w-5 h-5 mr-2 text-primary" />
-                          <span>{booking.events?.location}</span>
-                        </div>
-                        <div className="flex items-center text-gray-700">
-                          <Ticket className="w-5 h-5 mr-2 text-primary" />
-                          <span>{booking.quantity} {booking.quantity === 1 ? 'Ticket' : 'Tickets'}</span>
-                        </div>
-                        <div className="flex items-center text-gray-700">
-                          <DollarSign className="w-5 h-5 mr-2 text-primary" />
-                          <span>${(booking.events?.price * booking.quantity).toFixed(2)}</span>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-wrap gap-3">
-                        <button
-                          onClick={() => handleViewQR(booking)}
-                          className="btn-primary flex items-center"
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Ticket
-                        </button>
-                        <button
-                          onClick={() => handleDownloadQR(booking)}
-                          className="btn-secondary flex items-center"
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Download QR
-                        </button>
-                      </div>
-
-                      {/* Booking Info */}
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <p className="text-sm text-gray-500">
-                          Booked on {new Date(booking.created_at).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Booking ID: {booking.id}
-                        </p>
-                      </div>
+                    <div className="booking-footer">
+                      <p className="booking-date">Booked on {formatDate(booking.created_at)}</p>
                     </div>
                   </div>
                 </div>
@@ -227,7 +239,7 @@ export default function MyBookings() {
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   )
 }
