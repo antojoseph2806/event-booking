@@ -8,8 +8,8 @@
   }
   
   :root {
-    --primary: #4f46e5;
-    --secondary: #7c3aed;
+    --primary: #ef4444;
+    --secondary: #dc2626;
   }
   
   .line-clamp-2 {
@@ -256,4 +256,145 @@
 .slick-dots li.slick-active button:before {
   opacity: 1;
   color: #4f46e5;
+}
+
+/* Global Skeleton Styles for Admin Pages */
+.skeleton-action-btn {
+  height: 48px;
+  width: 100%;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.skeleton-booking-card {
+  height: 160px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.skeleton-event-card {
+  height: 200px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.skeleton-user-card {
+  height: 140px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.skeleton-stat-card {
+  height: 80px;
+  border-radius: 16px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 20px;
+}
+
+/* Toast Notifications - Force Mobile View Constraint */
+/* Target all possible react-hot-toast container classes */
+div[style*="position: fixed"][style*="z-index: 9999"],
+div[class*="Toaster"],
+div[data-hot-toast-container] {
+  position: fixed !important;
+  top: 80px !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translateX(-50%) !important;
+  max-width: 420px !important;
+  width: calc(100% - 40px) !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* Target individual toast items */
+div[role="status"],
+div[class*="toast"] {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.toast-container {
+  position: fixed !important;
+  top: 80px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  max-width: 420px !important;
+  width: calc(100% - 40px) !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
+}
+
+.custom-toast {
+  pointer-events: auto !important;
+  width: 100% !important;
+}
+
+/* React Hot Toast specific overrides */
+[data-sonner-toaster] {
+  position: fixed !important;
+  top: 80px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  max-width: 420px !important;
+  width: calc(100% - 40px) !important;
+  z-index: 9999 !important;
+}
+
+[data-sonner-toast] {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* Override default react-hot-toast positioning - all possible class names */
+.go3958317564,
+.go2072408551,
+.go685806154,
+div[style*="pointer-events"][style*="position: fixed"] {
+  position: fixed !important;
+  top: 80px !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  max-width: 420px !important;
+  width: calc(100% - 40px) !important;
+  z-index: 9999 !important;
+}
+
+/* Ensure toasts are centered and within mobile view */
+@media (max-width: 420px) {
+  div[style*="position: fixed"][style*="z-index: 9999"],
+  div[class*="Toaster"],
+  div[data-hot-toast-container],
+  .toast-container,
+  [data-sonner-toaster],
+  .go3958317564 {
+    max-width: calc(100% - 40px) !important;
+    width: calc(100% - 40px) !important;
+  }
+}
+
+@media (min-width: 421px) {
+  div[style*="position: fixed"][style*="z-index: 9999"],
+  div[class*="Toaster"],
+  div[data-hot-toast-container],
+  .toast-container,
+  [data-sonner-toaster],
+  .go3958317564 {
+    max-width: 380px !important;
+    width: 380px !important;
+  }
 }

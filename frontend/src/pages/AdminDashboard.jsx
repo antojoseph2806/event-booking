@@ -1,22 +1,28 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import Sidebar from '../components/Sidebar'
-import { Users, Calendar, Ticket, DollarSign, TrendingUp, Activity } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { QrCode } from 'lucide-react'
+import { Html5QrcodeScanner } from 'html5-qrcode'
+import toast from 'react-hot-toast'
+import '../pages/Home.css'
 
 export default function AdminDashboard() {
-  const { user, loading } = useAuth()
+  const { user, loading, signOut } = useAuth()
   const navigate = useNavigate()
+  const [activeCard, setActiveCard] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [events, setEvents] = useState([])
+  const [loadingData, setLoadingData] = useState(true)
+  const [touchStart, setTouchStart] = useState(0)
+  const [touchEnd, setTouchEnd] = useState(0)
+  const [showScanner, setShowScanner] = useState(false)
+  const [scannerInstance, setScannerInstance] = useState(null)
   const [stats, setStats] = useState({
     totalUsers: 0,
-    totalEvents: 0,
     totalBookings: 0,
     totalRevenue: 0
   })
-  const [recentActivity, setRecentActivity] = useState([])
-  const [topEvents, setTopEvents] = useState([])
-  const [loadingData, setLoadingData] = useState(true)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -35,13 +41,17 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
+      // Fetch events
+      const { data: eventsData } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      setEvents(eventsData || [])
+
       // Fetch stats
       const { count: usersCount } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact', head: true })
-
-      const { count: eventsCount } = await supabase
-        .from('events')
         .select('*', { count: 'exact', head: true })
 
       const { data: bookingsData, count: bookingsCount } = await supabase
@@ -52,34 +62,9 @@ export default function AdminDashboard() {
 
       setStats({
         totalUsers: usersCount || 0,
-        totalEvents: eventsCount || 0,
         totalBookings: bookingsCount || 0,
         totalRevenue: totalRevenue.toFixed(2)
       })
-
-      // Fetch recent bookings for activity
-      const { data: recentBookings } = await supabase
-        .from('bookings')
-        .select('*, profiles(name, email), events(title)')
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-      setRecentActivity(recentBookings || [])
-
-      // Fetch top events
-      const { data: eventsWithBookings } = await supabase
-        .from('events')
-        .select('*, bookings(quantity, total_price)')
-
-      const eventsStats = eventsWithBookings?.map(event => ({
-        name: event.title,
-        bookings: event.bookings?.reduce((sum, b) => sum + b.quantity, 0) || 0,
-        revenue: event.bookings?.reduce((sum, b) => sum + parseFloat(b.total_price || 0), 0) || 0
-      })) || []
-
-      const sortedEvents = eventsStats.sort((a, b) => b.revenue - a.revenue).slice(0, 4)
-      setTopEvents(sortedEvents)
-
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -87,132 +72,426 @@ export default function AdminDashboard() {
     }
   }
 
-  if (loading) {
+  const formatDate = useCallback((dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }, [])
+
+  useEffect(() => {
+    if (events.length === 0) return
+
+    let rafId
+    let lastTime = Date.now()
+    const ROTATION_INTERVAL = 4000
+
+    const animate = () => {
+      const now = Date.now()
+      if (now - lastTime >= ROTATION_INTERVAL) {
+        setActiveCard((prev) => (prev + 1) % events.length)
+        lastTime = now
+      }
+      rafId = requestAnimationFrame(animate)
+    }
+
+    rafId = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(rafId)
+  }, [events.length])
+
+  const handleMenuToggle = useCallback(() => setMenuOpen(prev => !prev), [])
+  const handleMenuNavigation = useCallback((path) => {
+    navigate(path)
+    setMenuOpen(false)
+  }, [navigate])
+
+  const handleLogout = useCallback(async () => {
+    await signOut()
+    navigate('/admin/login')
+  }, [signOut, navigate])
+
+  const handleEventClick = useCallback(() => {
+    navigate(`/admin/dashboard/events`)
+  }, [navigate])
+
+  const activeEvent = useMemo(() => events[activeCard], [events, activeCard])
+
+  // Handle touch start
+  const handleTouchStart = (e) => {
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  // Handle touch move
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  // Handle touch end
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > 50
+    const isRightSwipe = distance < -50
+
+    if (isLeftSwipe && activeCard < events.length - 1) {
+      setActiveCard(activeCard + 1)
+    }
+    if (isRightSwipe && activeCard > 0) {
+      setActiveCard(activeCard - 1)
+    }
+
+    // Reset values
+    setTouchStart(0)
+    setTouchEnd(0)
+  }
+
+  const handleQRScan = () => {
+    setShowScanner(true)
+    
+    setTimeout(() => {
+      const scanner = new Html5QrcodeScanner('qr-reader', {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+      })
+
+      scanner.render(onScanSuccess, onScanError)
+      setScannerInstance(scanner)
+    }, 100)
+  }
+
+  const stopQRScanner = () => {
+    if (scannerInstance) {
+      scannerInstance.clear()
+      setScannerInstance(null)
+    }
+    setShowScanner(false)
+  }
+
+  const onScanSuccess = async (decodedText) => {
+    try {
+      const qrData = JSON.parse(decodedText)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        toast.error('Not authenticated')
+        stopQRScanner()
+        return
+      }
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/admin/bookings/verify-qr`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(qrData)
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(`✅ Entry confirmed for ${data.booking.user.email}`)
+        stopQRScanner()
+      } else {
+        toast.error('❌ Invalid or expired ticket')
+        stopQRScanner()
+      }
+    } catch (error) {
+      console.error('Error processing QR code:', error)
+      toast.error('❌ Invalid QR code format')
+      stopQRScanner()
+    }
+  }
+
+  const onScanError = (error) => {
+    console.debug('QR Scan error:', error)
+  }
+
+  if (loading || loadingData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      <div className="home-container">
+        <div className="mobile-screen">
+          {/* Animated Background Orbs */}
+          <div className="bg-orb orb-1"></div>
+          <div className="bg-orb orb-2"></div>
+          <div className="bg-orb orb-3"></div>
+
+          {/* Skeleton Header */}
+          <header className="top-nav">
+            <img src="/hyper.jpeg" alt="HyperMoth" className="logo-image skeleton-pulse" />
+            <div className="menu-icon skeleton-pulse">
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+            </div>
+          </header>
+
+          {/* Skeleton Stats */}
+          <div className="stats-container">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton-stat-card skeleton-shimmer"></div>
+            ))}
+          </div>
+
+          {/* Skeleton Carousel */}
+          <div className="carousel-section">
+            <div className="skeleton-carousel">
+              <div className="skeleton-card skeleton-shimmer">
+                <div className="skeleton-image"></div>
+              </div>
+            </div>
+            
+            <div className="carousel-indicators">
+              <div className="indicator skeleton-pulse"></div>
+              <div className="indicator skeleton-pulse"></div>
+              <div className="indicator skeleton-pulse"></div>
+            </div>
+          </div>
+
+          {/* Skeleton Event Details */}
+          <div className="event-details">
+            <div className="event-info">
+              <div className="skeleton-title skeleton-shimmer"></div>
+              <div className="skeleton-date skeleton-shimmer"></div>
+              <div className="skeleton-location skeleton-shimmer"></div>
+              <div className="skeleton-price skeleton-shimmer"></div>
+            </div>
+          </div>
+
+          {/* Loading Indicator */}
+          <div className="loading-indicator">
+            <div className="loading-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
 
-  const statsDisplay = [
-    { icon: Users, label: 'Total Users', value: stats.totalUsers, change: '+12%', color: 'from-blue-500 to-blue-600' },
-    { icon: Calendar, label: 'Active Events', value: stats.totalEvents, change: '+8%', color: 'from-purple-500 to-purple-600' },
-    { icon: Ticket, label: 'Total Bookings', value: stats.totalBookings, change: '+23%', color: 'from-green-500 to-green-600' },
-    { icon: DollarSign, label: 'Revenue', value: `$${stats.totalRevenue}`, change: '+15%', color: 'from-orange-500 to-orange-600' }
-  ]
+  if (events.length === 0) {
+    return (
+      <div className="home-container">
+        <div className="mobile-screen">
+          <div className="bg-orb orb-1"></div>
+          <div className="bg-orb orb-2"></div>
+          <div className="bg-orb orb-3"></div>
+
+          <header className="top-nav">
+            <img src="/hyper.jpeg" alt="HyperMoth" className="logo-image" />
+            <div className="menu-icon" onClick={handleMenuToggle}>
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+            </div>
+          </header>
+
+          {menuOpen && (
+            <div className="dropdown-menu">
+              <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard')}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                </svg>
+                Dashboard
+              </button>
+              <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/events')}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                Manage Events
+              </button>
+              <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/users')}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Users
+              </button>
+              <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/bookings')}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+                Bookings
+              </button>
+              <button className="menu-item logout" onClick={handleLogout}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                Logout
+              </button>
+            </div>
+          )}
+
+          <div className="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <h3>No Events Available</h3>
+            <p>Create your first event to get started</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar isAdmin={true} />
-      
-      <main className="flex-1 lg:ml-0 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8 mt-16 lg:mt-0">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-              Admin Dashboard
-            </h1>
-            <p className="text-gray-600">Monitor and manage your event platform</p>
+    <div className="home-container">
+      <div className="mobile-screen">
+        <div className="bg-orb orb-1"></div>
+        <div className="bg-orb orb-2"></div>
+        <div className="bg-orb orb-3"></div>
+
+        <header className="top-nav">
+          <img src="/hyper.jpeg" alt="HyperMoth" className="logo-image" />
+          <div className="menu-icon" onClick={handleMenuToggle}>
+            <div className="menu-line"></div>
+            <div className="menu-line"></div>
+            <div className="menu-line"></div>
+          </div>
+        </header>
+
+        {menuOpen && (
+          <div className="dropdown-menu">
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              </svg>
+              Dashboard
+            </button>
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/events')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Manage Events
+            </button>
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/users')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              Users
+            </button>
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/bookings')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              </svg>
+              Bookings
+            </button>
+            <button className="menu-item logout" onClick={handleLogout}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              Logout
+            </button>
+          </div>
+        )}
+
+        <div className="hero-section">
+          <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '20px', fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#ef4444' }}>{stats.totalUsers}</div>
+              <div>Users</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#ef4444' }}>{stats.totalBookings}</div>
+              <div>Bookings</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#ef4444' }}>₹{stats.totalRevenue}</div>
+              <div>Revenue</div>
+            </div>
+          </div>
+        </div>
+
+        <div 
+          className="carousel-section"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="carousel-container">
+            {events.map((event, index) => (
+              <div
+                key={event.id}
+                className={`carousel-card ${activeCard === index ? 'active' : ''} ${index < activeCard ? 'left' : index > activeCard ? 'right' : ''}`}
+                onClick={handleEventClick}
+              >
+                <div className="card-overlay"></div>
+                <img
+                  src={event.image_url || 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400&h=600&fit=crop'}
+                  alt={event.title}
+                  className="event-image"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className="card-glow"></div>
+              </div>
+            ))}
           </div>
 
-          {loadingData ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-            </div>
-          ) : (
-            <>
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-                {statsDisplay.map((stat, index) => (
-                  <div key={index} className="card">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-lg flex items-center justify-center`}>
-                        <stat.icon className="w-6 h-6 text-white" />
-                      </div>
-                      <span className="text-green-600 text-sm font-semibold flex items-center">
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                        {stat.change}
-                      </span>
-                    </div>
-                    <p className="text-gray-600 text-sm mb-1">{stat.label}</p>
-                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                {/* Recent Activity */}
-                <div className="card">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold flex items-center">
-                      <Activity className="w-5 h-5 mr-2" />
-                      Recent Activity
-                    </h2>
-                  </div>
-                  {recentActivity.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">No recent activity</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {recentActivity.map((activity, index) => (
-                        <div key={index} className="flex items-start space-x-3 pb-4 border-b last:border-b-0">
-                          <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-xs font-semibold">
-                              {activity.profiles?.name?.[0] || 'U'}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900">{activity.profiles?.name || 'User'}</p>
-                            <p className="text-sm text-gray-600">Booked {activity.events?.title}</p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              {new Date(activity.created_at).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Top Events */}
-                <div className="card">
-                  <h2 className="text-xl font-bold mb-6">Top Performing Events</h2>
-                  {topEvents.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">No events data available</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {topEvents.map((event, index) => (
-                        <div key={index} className="flex items-center justify-between pb-4 border-b last:border-b-0">
-                          <div className="flex-1">
-                            <p className="font-semibold text-gray-900">{event.name}</p>
-                            <p className="text-sm text-gray-600">{event.bookings} bookings</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-green-600">${event.revenue.toFixed(2)}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="card">
-                <h2 className="text-xl font-bold mb-6">Quick Actions</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Link to="/admin/dashboard/events" className="btn-primary text-center">
-                    Manage Events
-                  </Link>
-                  <button className="btn-secondary">View All Users</button>
-                  <button className="btn-secondary">Export Reports</button>
-                  <button className="btn-secondary">Settings</button>
-                </div>
-              </div>
-            </>
-          )}
+          <div className="carousel-indicators">
+            {events.map((_, index) => (
+              <div
+                key={index}
+                className={`indicator ${activeCard === index ? 'active' : ''}`}
+                onClick={() => setActiveCard(index)}
+              ></div>
+            ))}
+          </div>
         </div>
-      </main>
+
+        {activeEvent && (
+          <div className="event-details">
+            <div className="event-info">
+              <h3 className="event-title">{activeEvent.title}</h3>
+              <p className="event-date">{formatDate(activeEvent.date)}</p>
+              <p className="event-locations">{activeEvent.location}</p>
+              <p className="event-price">₹{activeEvent.price}</p>
+            </div>
+          </div>
+        )}
+
+        {/* QR Scanner Modal */}
+        {showScanner && (
+          <div className="qr-scanner-modal">
+            <div className="qr-scanner-content">
+              <div className="qr-scanner-header">
+                <h3>Scan QR Code</h3>
+                <button className="close-scanner" onClick={stopQRScanner}>✕</button>
+              </div>
+              <div id="qr-reader"></div>
+            </div>
+          </div>
+        )}
+
+        {/* QR Scan Button */}
+        <button className="qr-scan-fab" onClick={handleQRScan} aria-label="Scan QR Code">
+          <QrCode size={28} />
+        </button>
+      </div>
     </div>
   )
 }

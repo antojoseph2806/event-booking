@@ -58,8 +58,8 @@
 /* Header */
 .profile-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
   padding: 20px 24px;
   position: sticky;
   top: 0;
@@ -79,29 +79,37 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s ease;
   flex-shrink: 0;
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%) !important;
 }
 
 .back-btn svg {
   width: 22px;
   height: 22px;
   stroke: #ef4444;
+  transform: none !important;
 }
 
 .back-btn:hover {
   background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  transform: translateY(-50%) !important;
 }
 
 .back-btn:active {
-  transform: scale(0.95);
+  background: rgba(239, 68, 68, 0.3);
+  transform: translateY(-50%) !important;
 }
 
 .header-title {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: #FFFFFF;
   letter-spacing: -0.5px;
+  text-align: center;
 }
 
 .menu-icon {
@@ -110,7 +118,10 @@
   gap: 5px;
   cursor: pointer;
   padding: 8px;
-  transition: all 0.3s ease;
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .menu-line {
@@ -118,7 +129,6 @@
   height: 3px;
   background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
   border-radius: 3px;
-  transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
 }
 
@@ -300,23 +310,6 @@
   font-size: 15px;
 }
 
-.form-display.locked {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.locked-badge {
-  font-size: 11px;
-  background: rgba(239, 68, 68, 0.2);
-  color: rgba(255, 255, 255, 0.7);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
 /* Action Buttons */
 .action-buttons {
   display: flex;
@@ -326,66 +319,128 @@
   margin-bottom: 20px;
 }
 
-.btn-primary,
-.btn-secondary {
+.profile-form .btn-primary,
+.profile-form .btn-secondary {
   width: 100%;
-  padding: 16px 32px;
+  padding: 18px 32px;
   border-radius: 16px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.3s ease;
   border: none;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: #FFFFFF;
-  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.5);
+.profile-form .btn-primary {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 
+    0 10px 30px rgba(239, 68, 68, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 32px rgba(220, 38, 38, 0.7);
+.profile-form .btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.6s;
 }
 
-.btn-primary:disabled {
+.profile-form .btn-primary:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.profile-form .btn-primary:hover:not(:disabled) {
+  transform: translateY(-5px) !important;
+  box-shadow: 
+    0 15px 45px rgba(239, 68, 68, 0.8),
+    0 0 0 2px rgba(255, 255, 255, 0.2) inset;
+}
+
+.profile-form .btn-primary:active:not(:disabled) {
+  transform: translateY(-3px) !important;
+}
+
+.profile-form .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none !important;
 }
 
-.btn-secondary {
+.profile-form .btn-secondary {
   background: rgba(255, 255, 255, 0.05);
   color: #FFFFFF;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 2px solid rgba(239, 68, 68, 0.5);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.btn-secondary:hover:not(:disabled) {
+.profile-form .btn-secondary:hover:not(:disabled) {
   background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.5);
+  border-color: rgba(239, 68, 68, 0.8);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+}
+
+.profile-form .btn-secondary:active:not(:disabled) {
+  transform: translateY(-3px);
+}
+
+.profile-form .btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 /* Logout Button */
 .logout-btn {
   width: 100%;
   background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 2px solid rgba(239, 68, 68, 0.3);
   border-radius: 16px;
-  padding: 14px 32px;
+  padding: 16px 32px;
   color: #ef4444;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.logout-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(239, 68, 68, 0.2), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+
+.logout-btn:hover::before {
+  transform: translateX(100%);
 }
 
 .logout-btn:hover {
   background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.5);
+  border-color: rgba(239, 68, 68, 0.6);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+}
+
+.logout-btn:active {
+  transform: translateY(-3px);
 }
 
 /* Loading State */
@@ -447,4 +502,140 @@
 
 .menu-item.logout:hover {
   background: rgba(239, 68, 68, 0.2);
+}
+
+/* Premium Skeleton Loading State */
+.skeleton-pulse {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    90deg,
+    rgba(239, 68, 68, 0.05) 0%,
+    rgba(239, 68, 68, 0.15) 50%,
+    rgba(239, 68, 68, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.skeleton-name {
+  height: 28px;
+  width: 60%;
+  margin: 0 auto 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.skeleton-email {
+  height: 18px;
+  width: 50%;
+  margin: 0 auto 8px;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.skeleton-date {
+  height: 16px;
+  width: 40%;
+  margin: 0 auto;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.skeleton-stat-value {
+  height: 32px;
+  width: 60%;
+  margin: 0 auto 8px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.skeleton-stat-label {
+  height: 16px;
+  width: 80%;
+  margin: 0 auto;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.loading-indicator {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+}
+
+.loading-dots {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  background: rgba(20, 20, 20, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.loading-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: loading-bounce 1.4s ease-in-out infinite;
+}
+
+.loading-dots span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes loading-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
 }

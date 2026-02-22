@@ -48,13 +48,6 @@ export default function AdminLogin() {
 
         {/* Login Content */}
         <div className="login-content">
-          {/* Admin Icon */}
-          <div className="admin-icon-container">
-            <div className="admin-icon-wrapper">
-              <Shield />
-            </div>
-          </div>
-
           {/* Title Section */}
           <div className="admin-title-section">
             <h1 className="admin-title">Admin Portal</h1>

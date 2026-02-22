@@ -107,9 +107,40 @@ export default function MyBookings() {
     return (
       <div className="bookings-container">
         <div className="bookings-screen">
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p className="loading-text">Loading Bookings...</p>
+          {/* Animated Background Orbs */}
+          <div className="bg-orb orb-1"></div>
+          <div className="bg-orb orb-2"></div>
+          <div className="bg-orb orb-3"></div>
+
+          {/* Skeleton Header */}
+          <header className="bookings-header">
+            <button className="back-btn skeleton-pulse">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <h1 className="header-title skeleton-pulse">My Bookings</h1>
+            <div className="menu-icon skeleton-pulse">
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+            </div>
+          </header>
+
+          {/* Skeleton Booking Cards */}
+          <div className="bookings-list">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton-booking-card skeleton-shimmer"></div>
+            ))}
+          </div>
+
+          {/* Loading Indicator */}
+          <div className="loading-indicator">
+            <div className="loading-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </div>
         </div>
       </div>

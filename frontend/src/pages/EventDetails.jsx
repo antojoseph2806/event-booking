@@ -121,9 +121,71 @@ export default function EventDetails() {
     return (
       <div className="event-details-container">
         <div className="event-details-screen">
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p className="loading-text">Loading Event...</p>
+          {/* Animated Background Orbs */}
+          <div className="bg-orb orb-1"></div>
+          <div className="bg-orb orb-2"></div>
+
+          {/* Skeleton Header */}
+          <header className="details-header">
+            <button className="back-button skeleton-pulse">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <h1 className="header-title skeleton-pulse">Event Details</h1>
+            <button className="share-button skeleton-pulse">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
+            </button>
+          </header>
+
+          {/* Skeleton Event Image */}
+          <div className="event-image-container">
+            <div className="skeleton-event-image skeleton-shimmer"></div>
+          </div>
+
+          {/* Skeleton Event Info Card */}
+          <div className="event-info-card">
+            <div className="title-section">
+              <div className="skeleton-title skeleton-shimmer"></div>
+              <div className="skeleton-button skeleton-shimmer"></div>
+            </div>
+            
+            <div className="info-grid">
+              <div className="info-item">
+                <div className="skeleton-info-box skeleton-shimmer"></div>
+              </div>
+              <div className="info-item">
+                <div className="skeleton-info-box skeleton-shimmer"></div>
+              </div>
+              <div className="info-item">
+                <div className="skeleton-info-box skeleton-shimmer"></div>
+              </div>
+              <div className="info-item">
+                <div className="skeleton-info-box skeleton-shimmer"></div>
+              </div>
+            </div>
+
+            <div className="description-section">
+              <div className="skeleton-section-title skeleton-shimmer"></div>
+              <div className="skeleton-description skeleton-shimmer"></div>
+              <div className="skeleton-description skeleton-shimmer" style={{ width: '90%' }}></div>
+              <div className="skeleton-description skeleton-shimmer" style={{ width: '70%' }}></div>
+            </div>
+          </div>
+
+          {/* Loading Indicator */}
+          <div className="loading-indicator">
+            <div className="loading-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </div>
         </div>
       </div>

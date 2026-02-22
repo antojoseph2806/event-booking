@@ -1,15 +1,31 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import Sidebar from '../components/Sidebar'
-import { Plus, Edit, Trash2, Calendar, MapPin, DollarSign, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import AddEventModal from '../components/AddEventModal'
+import { Calendar, MapPin, DollarSign, Users, Edit, Trash2, Plus, Menu, Home, CalendarDays, UserCircle, LogOut } from 'lucide-react'
+import '../pages/Home.css'
+
+// Cache configuration
+const CACHE_KEY = 'admin_events_cache'
+const CACHE_DURATION = 30000 // 30 seconds
+const REQUEST_TIMEOUT = 5000 // 5 seconds
 
 export default function AdminEvents() {
-  const { user, loading } = useAuth()
+  const { user, loading, signOut } = useAuth()
   const navigate = useNavigate()
-  const [events, setEvents] = useState([])
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [events, setEvents] = useState(() => {
+    // Initialize from cache if available
+    const cached = sessionStorage.getItem(CACHE_KEY)
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached)
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        return data
+      }
+    }
+    return []
+  })
   const [loadingData, setLoadingData] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingEvent, setEditingEvent] = useState(null)
@@ -29,34 +45,88 @@ export default function AdminEvents() {
     }
   }, [user])
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
+    // Check cache first
+    const cached = sessionStorage.getItem(CACHE_KEY)
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached)
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        setEvents(data)
+        setLoadingData(false)
+        return
+      }
+    }
+
+    const abortController = new AbortController()
+    const timeoutId = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT)
+
     try {
       setLoadingData(true)
+      
       const { data, error } = await supabase
         .from('events')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('date', { ascending: true })
+        .abortSignal(abortController.signal)
+
+      clearTimeout(timeoutId)
 
       if (error) throw error
-      setEvents(data || [])
+      
+      const eventsData = data || []
+      setEvents(eventsData)
+      
+      // Cache the results
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+        data: eventsData,
+        timestamp: Date.now()
+      }))
     } catch (error) {
-      console.error('Error fetching events:', error)
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        console.warn('Request timeout - using cached data if available')
+      } else {
+        console.error('Error fetching events:', error)
+      }
     } finally {
       setLoadingData(false)
     }
-  }
+  }, [])
 
-  const handleAddEvent = () => {
+  const formatDate = useCallback((dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }, [])
+
+  const handleMenuToggle = useCallback(() => setMenuOpen(prev => !prev), [])
+  
+  const handleMenuNavigation = useCallback((path) => {
+    navigate(path)
+    setMenuOpen(false)
+  }, [navigate])
+
+  const handleLogout = useCallback(async () => {
+    await signOut()
+    navigate('/admin/login')
+  }, [signOut, navigate])
+
+  const handleAddEvent = useCallback(() => {
     setEditingEvent(null)
     setShowModal(true)
-  }
+  }, [])
 
-  const handleEditEvent = (event) => {
+  const handleEditEvent = useCallback((event) => {
     setEditingEvent(event)
     setShowModal(true)
-  }
+  }, [])
 
-  const handleDeleteEvent = async (eventId) => {
+  const handleDeleteEvent = useCallback(async (eventId) => {
     if (!window.confirm('Are you sure you want to delete this event?')) return
 
     try {
@@ -66,173 +136,389 @@ export default function AdminEvents() {
         .eq('id', eventId)
 
       if (error) throw error
-      fetchEvents() // Refresh the list
+      
+      // Clear cache and refetch
+      sessionStorage.removeItem(CACHE_KEY)
+      fetchEvents()
     } catch (error) {
       console.error('Error deleting event:', error)
       alert('Failed to delete event')
     }
-  }
+  }, [fetchEvents])
 
-  const handleEventSaved = () => {
+  const handleEventSaved = useCallback(() => {
     setShowModal(false)
-    fetchEvents() // Refresh the list
-  }
+    setEditingEvent(null)
+    // Clear cache and refetch
+    sessionStorage.removeItem(CACHE_KEY)
+    fetchEvents()
+  }, [fetchEvents])
 
-  if (loading) {
+  // Memoize formatted events to prevent unnecessary recalculations
+  const formattedEvents = useMemo(() => {
+    return events.map(event => ({
+      ...event,
+      formattedDate: new Date(event.date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }))
+  }, [events])
+
+  if (loading || loadingData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      <div className="home-container">
+        <div className="mobile-screen">
+          {/* Animated Background Orbs */}
+          <div className="bg-orb orb-1"></div>
+          <div className="bg-orb orb-2"></div>
+          <div className="bg-orb orb-3"></div>
+
+          {/* Skeleton Header */}
+          <div className="top-nav">
+            <img src="/hyper.jpeg" alt="HyperMoth" className="logo-image skeleton-pulse" />
+            <div className="menu-icon skeleton-pulse">
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+            </div>
+          </div>
+
+          {/* Skeleton Action Button */}
+          <div style={{ padding: '20px' }}>
+            <div className="skeleton-action-btn skeleton-shimmer"></div>
+          </div>
+
+          {/* Skeleton Event Cards */}
+          <div className="events-list">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton-event-card skeleton-shimmer"></div>
+            ))}
+          </div>
+
+          {/* Loading Indicator */}
+          <div className="loading-indicator">
+            <div className="loading-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar isAdmin={true} />
-      
-      <main className="flex-1 lg:ml-0 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8 mt-16 lg:mt-0">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-                  Manage Events
-                </h1>
-                <p className="text-gray-600">View, create, and manage all events</p>
-              </div>
-              <button
-                onClick={handleAddEvent}
-                className="btn-primary flex items-center justify-center"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Add Event
-              </button>
-            </div>
+    <div className="home-container">
+      <div className="bg-orb orb-1"></div>
+      <div className="bg-orb orb-2"></div>
+      <div className="bg-orb orb-3"></div>
+
+      <div className="mobile-screen">
+        <div className="top-nav">
+          <img src="/hyper.jpeg" alt="HyperMoth" className="logo-image" />
+          <div className="menu-icon" onClick={handleMenuToggle}>
+            <div className="menu-line"></div>
+            <div className="menu-line"></div>
+            <div className="menu-line"></div>
           </div>
+        </div>
 
-          {loadingData ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-            </div>
-          ) : (
-            <>
-              {/* Events Grid */}
-              {events.length === 0 ? (
-                <div className="card text-center py-12">
-                  <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No events found</h3>
-                  <p className="text-gray-600 mb-6">Get started by creating your first event</p>
-                  <button
-                    onClick={handleAddEvent}
-                    className="btn-primary inline-flex items-center"
-                  >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Create Event
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {events.map((event) => (
-                    <div key={event.id} className="card hover:shadow-lg transition-shadow">
-                      {/* Event Image */}
-                      <div className="relative h-40 mb-4 rounded-lg overflow-hidden">
-                        {event.image_url ? (
-                          <img
-                            src={event.image_url}
-                            alt={event.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                            <Calendar className="w-12 h-12 text-white opacity-80" />
-                          </div>
-                        )}
-                        {/* Price Badge */}
-                        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
-                          <span className="text-sm font-semibold text-gray-900">
-                            ${parseFloat(event.price).toFixed(2)}
-                          </span>
+        {menuOpen && (
+          <div className="dropdown-menu">
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard')}>
+              <Home />
+              <span>Dashboard</span>
+            </button>
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/events')}>
+              <CalendarDays />
+              <span>Manage Events</span>
+            </button>
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/bookings')}>
+              <Calendar />
+              <span>Manage Bookings</span>
+            </button>
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/users')}>
+              <UserCircle />
+              <span>Manage Users</span>
+            </button>
+            <button className="menu-item logout" onClick={handleLogout}>
+              <LogOut />
+              <span>Logout</span>
+            </button>
+          </div>
+        )}
+
+        {/* Create New Event Button */}
+        <button
+          onClick={handleAddEvent}
+          style={{
+            width: '100%',
+            padding: '16px',
+            border: 'none',
+            borderRadius: '20px',
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            color: '#FFFFFF',
+            fontSize: '16px',
+            fontWeight: '800',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            boxShadow: '0 10px 30px rgba(239, 68, 68, 0.5)',
+            marginBottom: '32px',
+            transition: 'all 0.3s ease',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}
+        >
+          <Plus style={{ width: '22px', height: '22px' }} />
+          Create New Event
+        </button>
+
+        {events.length === 0 ? (
+          <div className="empty-state">
+            <CalendarDays style={{ width: '80px', height: '80px', stroke: '#ef4444', marginBottom: '24px', opacity: 0.6 }} />
+            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#FFFFFF', marginBottom: '12px' }}>
+              No Events Found
+            </h3>
+            <p style={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.6)' }}>
+              Create your first event to get started
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            paddingBottom: '40px'
+          }}>
+            {formattedEvents.map((event) => (
+              <div
+                key={event.id}
+                style={{
+                  background: 'rgba(20, 20, 20, 0.8)',
+                  backdropFilter: 'blur(30px)',
+                  borderRadius: '24px',
+                  overflow: 'hidden',
+                  border: '2px solid rgba(239, 68, 68, 0.3)',
+                  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.6)',
+                  position: 'relative',
+                  animation: 'slideIn 0.5s ease-out'
+                }}
+              >
+                {/* Shimmer effect */}
+                <div style={{
+                  content: '',
+                  position: 'absolute',
+                  top: 0,
+                  left: '-100%',
+                  width: '100%',
+                  height: '100%',
+                  background: 'linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.1), transparent)',
+                  animation: 'shimmer 4s infinite'
+                }}></div>
+
+                {/* Event Image */}
+                {event.image_url && (
+                  <div style={{
+                    width: '100%',
+                    height: '180px',
+                    overflow: 'hidden',
+                    position: 'relative'
+                  }}>
+                    <img
+                      src={event.image_url}
+                      alt={event.title}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.7) 100%)'
+                    }}></div>
+                  </div>
+                )}
+
+                <div style={{ padding: '20px', position: 'relative' }}>
+                  {/* Event Title */}
+                  <h3 style={{
+                    fontSize: '20px',
+                    fontWeight: '800',
+                    color: '#FFFFFF',
+                    marginBottom: '12px',
+                    lineHeight: '1.3'
+                  }}>
+                    {event.title}
+                  </h3>
+
+                  {/* Event Description */}
+                  <p style={{
+                    fontSize: '14px',
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    marginBottom: '16px',
+                    lineHeight: '1.6',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  }}>
+                    {event.description}
+                  </p>
+
+                  {/* Event Details Grid */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <Calendar style={{ width: '16px', height: '16px', color: '#ef4444', flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '2px' }}>
+                          Date
                         </div>
-                      </div>
-
-                      {/* Event Details */}
-                      <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 min-h-[3rem]">
-                          {event.title}
-                        </h3>
-                        
-                        <p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5rem]">
-                          {event.description}
-                        </p>
-
-                        {/* Event Info */}
-                        <div className="space-y-2 mb-4">
-                          <div className="flex items-center text-sm text-gray-700">
-                            <Calendar className="w-4 h-4 mr-2 text-primary flex-shrink-0" />
-                            <div>
-                              <div className="font-medium">
-                                {new Date(event.date).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric'
-                                })}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {new Date(event.date).toLocaleTimeString([], { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center text-sm text-gray-700">
-                            <MapPin className="w-4 h-4 mr-2 text-primary flex-shrink-0" />
-                            <span className="truncate">{event.location}</span>
-                          </div>
-
-                          <div className="flex items-center text-sm text-gray-700">
-                            <Users className="w-4 h-4 mr-2 text-primary flex-shrink-0" />
-                            <span>Capacity: {event.capacity}</span>
-                          </div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#FFFFFF' }}>
+                          {event.formattedDate}
                         </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex gap-2 pt-4 border-t border-gray-200">
-                        <button
-                          onClick={() => handleEditEvent(event)}
-                          className="flex-1 px-3 py-2 text-sm text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
-                        >
-                          <Edit className="w-4 h-4" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteEvent(event.id)}
-                          className="px-3 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
                       </div>
                     </div>
-                  ))}
+
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <DollarSign style={{ width: '16px', height: '16px', color: '#ef4444', flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '2px' }}>
+                          Price
+                        </div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#FFFFFF' }}>
+                          ${event.price}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <MapPin style={{ width: '16px', height: '16px', color: '#ef4444', flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '2px' }}>
+                          Location
+                        </div>
+                        <div style={{
+                          fontSize: '13px',
+                          fontWeight: '700',
+                          color: '#FFFFFF',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {event.location}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <Users style={{ width: '16px', height: '16px', color: '#ef4444', flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '2px' }}>
+                          Capacity
+                        </div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#FFFFFF' }}>
+                          {event.capacity} seats
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={() => handleEditEvent(event)}
+                      style={{
+                        flex: 1,
+                        padding: '12px 16px',
+                        border: 'none',
+                        borderRadius: '16px',
+                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                        color: '#FFFFFF',
+                        fontSize: '14px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        boxShadow: '0 6px 20px rgba(59, 130, 246, 0.4)',
+                        transition: 'all 0.3s ease'
+                      }}
+                    >
+                      <Edit style={{ width: '16px', height: '16px' }} />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteEvent(event.id)}
+                      style={{
+                        flex: 1,
+                        padding: '12px 16px',
+                        border: '2px solid rgba(239, 68, 68, 0.5)',
+                        borderRadius: '16px',
+                        background: 'transparent',
+                        color: '#FFFFFF',
+                        fontSize: '14px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        transition: 'all 0.3s ease'
+                      }}
+                    >
+                      <Trash2 style={{ width: '16px', height: '16px' }} />
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              )}
-            </>
-          )}
-        </div>
-      </main>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Add/Edit Event Modal */}
-      {showModal && (
-        <AddEventModal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          onEventSaved={handleEventSaved}
-          event={editingEvent}
-        />
-      )}
+      <AddEventModal
+        isOpen={showModal}
+        onClose={() => {
+          setShowModal(false)
+          setEditingEvent(null)
+        }}
+        onEventSaved={handleEventSaved}
+        event={editingEvent}
+      />
     </div>
   )
 }

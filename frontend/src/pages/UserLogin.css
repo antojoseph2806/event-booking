@@ -72,43 +72,6 @@
   }
 }
 
-/* Back Button */
-.back-btn {
-  position: fixed;
-  top: 24px;
-  left: 50%;
-  transform: translateX(-210px);
-  width: 44px;
-  height: 44px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 100;
-}
-
-@media (max-width: 420px) {
-  .back-btn {
-    left: 24px;
-    transform: none;
-  }
-}
-
-.back-btn svg {
-  width: 22px;
-  height: 22px;
-  stroke: #ef4444;
-}
-
-.back-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  transform: translateX(-4px);
-}
-
 /* Login Card */
 .login-card {
   background: rgba(20, 20, 20, 0.8);
@@ -369,4 +332,43 @@
       0 40px 100px rgba(0, 0, 0, 0.9),
       0 0 0 1px rgba(239, 68, 68, 0.3);
   }
+}
+
+
+/* Back Button */
+.back-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 40px;
+  padding: 10px 0;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 10;
+  width: fit-content;
+  text-decoration: none;
+}
+
+.back-nav:hover {
+  color: #ef4444;
+  transform: translateX(-5px);
+}
+
+.back-nav svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Logo Image for Login Pages */
+.logo-image-login {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  border-radius: 12px;
+  margin: 0 auto;
+  display: block;
 }

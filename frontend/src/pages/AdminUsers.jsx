@@ -1,21 +1,36 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import Sidebar from '../components/Sidebar'
-import { Users, Search, Ban, Trash2, Mail, Calendar, Shield, AlertTriangle } from 'lucide-react'
+import { Users, Ban, Trash2, Mail, Calendar, Shield, AlertTriangle, Menu, Home, CalendarDays, UserCircle, LogOut } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
+import '../pages/Home.css'
+
+// Cache configuration
+const CACHE_KEY = 'admin_users_cache'
+const CACHE_DURATION = 30000 // 30 seconds
+const REQUEST_TIMEOUT = 5000 // 5 seconds
 
 export default function AdminUsers() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
-  const [users, setUsers] = useState([])
+  const [users, setUsers] = useState(() => {
+    // Initialize from cache if available
+    const cached = sessionStorage.getItem(CACHE_KEY)
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached)
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        return data
+      }
+    }
+    return []
+  })
   const [loadingData, setLoadingData] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showBlockModal, setShowBlockModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -32,7 +47,21 @@ export default function AdminUsers() {
     }
   }, [user])
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
+    // Check cache first
+    const cached = sessionStorage.getItem(CACHE_KEY)
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached)
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        setUsers(data)
+        setLoadingData(false)
+        return
+      }
+    }
+
+    const abortController = new AbortController()
+    const timeoutId = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT)
+
     try {
       // Get current session token
       const { data: { session } } = await supabase.auth.getSession()
@@ -47,24 +76,39 @@ export default function AdminUsers() {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
-        }
+        },
+        signal: abortController.signal
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         throw new Error('Failed to fetch users')
       }
 
       const data = await response.json()
-      setUsers(data.users || [])
+      const usersData = data.users || []
+      setUsers(usersData)
+      
+      // Cache the results
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+        data: usersData,
+        timestamp: Date.now()
+      }))
     } catch (error) {
-      console.error('Error fetching users:', error)
-      toast.error('Failed to fetch users')
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        console.warn('Request timeout - using cached data if available')
+      } else {
+        console.error('Error fetching users:', error)
+        toast.error('Failed to fetch users')
+      }
     } finally {
       setLoadingData(false)
     }
-  }
+  }, [navigate])
 
-  const handleBlockUser = async () => {
+  const handleBlockUser = useCallback(async () => {
     if (!selectedUser) return
 
     try {
@@ -81,15 +125,18 @@ export default function AdminUsers() {
           ? { ...u, user_metadata: { ...u.user_metadata, blocked: true } }
           : u
       ))
+      
+      // Clear cache
+      sessionStorage.removeItem(CACHE_KEY)
     } catch (error) {
       console.error('Error blocking user:', error)
       toast.error('Failed to block user')
     } finally {
       setActionLoading(false)
     }
-  }
+  }, [selectedUser, users])
 
-  const handleUnblockUser = async (userId) => {
+  const handleUnblockUser = useCallback(async (userId) => {
     try {
       toast.success('User unblocked successfully')
       
@@ -99,13 +146,16 @@ export default function AdminUsers() {
           ? { ...u, user_metadata: { ...u.user_metadata, blocked: false } }
           : u
       ))
+      
+      // Clear cache
+      sessionStorage.removeItem(CACHE_KEY)
     } catch (error) {
       console.error('Error unblocking user:', error)
       toast.error('Failed to unblock user')
     }
-  }
+  }, [users])
 
-  const handleDeleteUser = async () => {
+  const handleDeleteUser = useCallback(async () => {
     if (!selectedUser) return
 
     try {
@@ -122,6 +172,9 @@ export default function AdminUsers() {
       toast.success('User data deleted successfully')
       setShowDeleteModal(false)
       setSelectedUser(null)
+      
+      // Clear cache and refetch
+      sessionStorage.removeItem(CACHE_KEY)
       fetchUsers()
     } catch (error) {
       console.error('Error deleting user:', error)
@@ -129,271 +182,298 @@ export default function AdminUsers() {
     } finally {
       setActionLoading(false)
     }
-  }
+  }, [selectedUser, fetchUsers])
 
-  const filteredUsers = users.filter(u => {
-    const searchLower = searchTerm.toLowerCase()
-    return (
-      u.email?.toLowerCase().includes(searchLower) ||
-      u.user_metadata?.name?.toLowerCase().includes(searchLower) ||
-      u.id.toLowerCase().includes(searchLower)
-    )
-  })
+  // Memoize formatted users to prevent unnecessary recalculations
+  const formattedUsers = useMemo(() => {
+    return users.map(u => ({
+      ...u,
+      formattedDate: u.created_at ? new Date(u.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }) : 'N/A'
+    }))
+  }, [users])
 
-  const formatDate = (dateString) => {
+  const handleLogout = useCallback(async () => {
+    await supabase.auth.signOut()
+    navigate('/admin/login')
+  }, [navigate])
+
+  const handleMenuNavigation = useCallback((path) => {
+    setShowMenu(false)
+    navigate(path)
+  }, [navigate])
+
+  const formatDate = useCallback((dateString) => {
     if (!dateString) return 'N/A'
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     })
-  }
+  }, [])
+
+  // Calculate stats with useMemo
+  const stats = useMemo(() => ({
+    totalUsers: users.length,
+    activeUsers: users.filter(u => !u.user_metadata?.blocked).length,
+    blockedUsers: users.filter(u => u.user_metadata?.blocked).length
+  }), [users])
 
   if (loading || loadingData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="home-container">
+        <div className="mobile-screen">
+          {/* Animated Background Orbs */}
+          <div className="bg-orb orb-1"></div>
+          <div className="bg-orb orb-2"></div>
+          <div className="bg-orb orb-3"></div>
+
+          {/* Skeleton Header */}
+          <div className="top-nav">
+            <img src="/hyper.jpeg" alt="HyperMoth" className="logo-image skeleton-pulse" />
+            <div className="menu-icon skeleton-pulse">
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+            </div>
+          </div>
+
+          {/* Skeleton User Cards */}
+          <div className="users-list" style={{ padding: '20px' }}>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="skeleton-user-card skeleton-shimmer"></div>
+            ))}
+          </div>
+
+          {/* Loading Indicator */}
+          <div className="loading-indicator">
+            <div className="loading-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar isAdmin={true} />
-      
-      <main className="flex-1 lg:ml-0 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8 mt-16 lg:mt-0">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-              User Management
-            </h1>
-            <p className="text-gray-600">Manage and monitor user accounts</p>
+    <div className="home-container">
+      {/* Animated Background Orbs */}
+      <div className="bg-orb orb-1"></div>
+      <div className="bg-orb orb-2"></div>
+      <div className="bg-orb orb-3"></div>
+
+      <div className="mobile-screen">
+        {/* Top Navigation */}
+        <div className="top-nav">
+          <img src="/hyper.jpeg" alt="HyperMoth" className="logo-image" />
+          <div className="menu-icon" onClick={() => setShowMenu(!showMenu)}>
+            <div className="menu-line"></div>
+            <div className="menu-line"></div>
+            <div className="menu-line"></div>
           </div>
+        </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-            <div className="card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">Total Users</p>
-                  <p className="text-3xl font-bold text-gray-900">{users.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </div>
-            <div className="card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">Active Users</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {users.filter(u => !u.user_metadata?.blocked).length}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </div>
-            <div className="card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">Blocked Users</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {users.filter(u => u.user_metadata?.blocked).length}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
-                  <Ban className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </div>
+        {/* Dropdown Menu */}
+        {showMenu && (
+          <div className="dropdown-menu">
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard')}>
+              <Home />
+              <span>Dashboard</span>
+            </button>
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/events')}>
+              <CalendarDays />
+              <span>Manage Events</span>
+            </button>
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/bookings')}>
+              <Calendar />
+              <span>Manage Bookings</span>
+            </button>
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/users')}>
+              <UserCircle />
+              <span>Manage Users</span>
+            </button>
+            <button className="menu-item logout" onClick={handleLogout}>
+              <LogOut />
+              <span>Logout</span>
+            </button>
           </div>
+        )}
 
-          {/* Search */}
-          <div className="card mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search users by name, email, or ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
+        {users.length === 0 ? (
+          <div className="empty-state">
+            <Users style={{ width: '80px', height: '80px', stroke: '#ef4444', marginBottom: '24px', opacity: 0.6 }} />
+            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#FFFFFF', marginBottom: '12px' }}>
+              No Users Found
+            </h3>
+            <p style={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.6)' }}>
+              No registered users yet
+            </p>
           </div>
+        ) : (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            paddingBottom: '40px'
+          }}>
+            {formattedUsers.map((u) => (
+              <div
+                key={u.id}
+                style={{
+                  background: 'rgba(20, 20, 20, 0.8)',
+                  backdropFilter: 'blur(30px)',
+                  borderRadius: '24px',
+                  padding: '20px',
+                  border: '2px solid rgba(239, 68, 68, 0.3)',
+                  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.6)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  animation: 'slideIn 0.5s ease-out'
+                }}
+              >
+                {/* Shimmer effect */}
+                <div style={{
+                  content: '',
+                  position: 'absolute',
+                  top: 0,
+                  left: '-100%',
+                  width: '100%',
+                  height: '100%',
+                  background: 'linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.1), transparent)',
+                  animation: 'shimmer 4s infinite'
+                }}></div>
 
-          {/* Users Table */}
-          <div className="card overflow-hidden">
-            {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Joined
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Bookings
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
-                        No users found
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredUsers.map((u) => (
-                      <tr key={u.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center flex-shrink-0">
-                              <span className="text-white font-semibold">
-                                {u.user_metadata?.name?.[0]?.toUpperCase() || u.email?.[0]?.toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {u.user_metadata?.name || 'No name'}
-                              </div>
-                              <div className="text-sm text-gray-500 flex items-center gap-1">
-                                <Mail className="w-3 h-3" />
-                                {u.email}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 flex items-center gap-1">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            {formatDate(u.created_at)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{u.bookingCount}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {u.user_metadata?.blocked ? (
-                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                              Blocked
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                              Active
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end gap-2">
-                            {u.user_metadata?.blocked ? (
-                              <button
-                                onClick={() => handleUnblockUser(u.id)}
-                                className="text-green-600 hover:text-green-900 p-2 hover:bg-green-50 rounded-lg transition-colors"
-                                title="Unblock user"
-                              >
-                                <Shield className="w-4 h-4" />
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  setSelectedUser(u)
-                                  setShowBlockModal(true)
-                                }}
-                                className="text-orange-600 hover:text-orange-900 p-2 hover:bg-orange-50 rounded-lg transition-colors"
-                                title="Block user"
-                              >
-                                <Ban className="w-4 h-4" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => {
-                                setSelectedUser(u)
-                                setShowDeleteModal(true)
-                              }}
-                              className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete user"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', position: 'relative' }}>
+                  {/* User Avatar */}
+                  <div style={{
+                    width: '60px',
+                    height: '60px',
+                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '24px',
+                    fontWeight: '900',
+                    color: '#FFFFFF',
+                    boxShadow: '0 8px 24px rgba(239, 68, 68, 0.5)',
+                    flexShrink: 0
+                  }}>
+                    {u.user_metadata?.name?.[0]?.toUpperCase() || u.email?.[0]?.toUpperCase()}
+                  </div>
 
-            {/* Mobile Card View */}
-            <div className="lg:hidden space-y-4 p-4">
-              {filteredUsers.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  No users found
-                </div>
-              ) : (
-                filteredUsers.map((u) => (
-                  <div key={u.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white font-semibold text-lg">
-                            {u.user_metadata?.name?.[0]?.toUpperCase() || u.email?.[0]?.toUpperCase()}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {u.user_metadata?.name || 'No name'}
-                          </div>
-                          <div className="text-xs text-gray-500 flex items-center gap-1">
-                            <Mail className="w-3 h-3" />
-                            {u.email}
-                          </div>
-                        </div>
+                  {/* User Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div style={{
+                        fontSize: '18px',
+                        fontWeight: '800',
+                        color: '#FFFFFF',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {u.user_metadata?.name || 'No name'}
                       </div>
                       {u.user_metadata?.blocked ? (
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                        <span style={{
+                          padding: '4px 12px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          borderRadius: '12px',
+                          background: 'rgba(239, 68, 68, 0.2)',
+                          color: '#ef4444',
+                          border: '1px solid rgba(239, 68, 68, 0.5)',
+                          flexShrink: 0
+                        }}>
                           Blocked
                         </span>
                       ) : (
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        <span style={{
+                          padding: '4px 12px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          borderRadius: '12px',
+                          background: 'rgba(16, 185, 129, 0.2)',
+                          color: '#10b981',
+                          border: '1px solid rgba(16, 185, 129, 0.5)',
+                          flexShrink: 0
+                        }}>
                           Active
                         </span>
                       )}
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+
+                    <div style={{
+                      fontSize: '13px',
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      marginBottom: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      <Mail style={{ width: '14px', height: '14px', flexShrink: 0 }} />
+                      {u.email}
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '12px',
+                      marginBottom: '16px'
+                    }}>
                       <div>
-                        <span className="text-gray-500">Joined:</span>
-                        <div className="font-medium text-gray-900">{formatDate(u.created_at)}</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '4px' }}>
+                          Joined
+                        </div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Calendar style={{ width: '12px', height: '12px' }} />
+                          {u.formattedDate}
+                        </div>
                       </div>
                       <div>
-                        <span className="text-gray-500">Bookings:</span>
-                        <div className="font-medium text-gray-900">{u.bookingCount}</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '4px' }}>
+                          Bookings
+                        </div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#FFFFFF' }}>
+                          {u.bookingCount || 0}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex gap-2 pt-3 border-t border-gray-200">
+                    {/* Action Buttons */}
+                    <div style={{ display: 'flex', gap: '8px' }}>
                       {u.user_metadata?.blocked ? (
                         <button
                           onClick={() => handleUnblockUser(u.id)}
-                          className="flex-1 px-3 py-2 text-sm text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
+                          style={{
+                            flex: 1,
+                            padding: '10px 16px',
+                            border: 'none',
+                            borderRadius: '16px',
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            color: '#FFFFFF',
+                            fontSize: '13px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)',
+                            transition: 'all 0.3s ease'
+                          }}
                         >
-                          <Shield className="w-4 h-4" />
+                          <Shield style={{ width: '16px', height: '16px' }} />
                           Unblock
                         </button>
                       ) : (
@@ -402,9 +482,25 @@ export default function AdminUsers() {
                             setSelectedUser(u)
                             setShowBlockModal(true)
                           }}
-                          className="flex-1 px-3 py-2 text-sm text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors flex items-center justify-center gap-2"
+                          style={{
+                            flex: 1,
+                            padding: '10px 16px',
+                            border: 'none',
+                            borderRadius: '16px',
+                            background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                            color: '#FFFFFF',
+                            fontSize: '13px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            boxShadow: '0 6px 20px rgba(249, 115, 22, 0.4)',
+                            transition: 'all 0.3s ease'
+                          }}
                         >
-                          <Ban className="w-4 h-4" />
+                          <Ban style={{ width: '16px', height: '16px' }} />
                           Block
                         </button>
                       )}
@@ -413,49 +509,114 @@ export default function AdminUsers() {
                           setSelectedUser(u)
                           setShowDeleteModal(true)
                         }}
-                        className="flex-1 px-3 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                        style={{
+                          flex: 1,
+                          padding: '10px 16px',
+                          border: '2px solid rgba(239, 68, 68, 0.5)',
+                          borderRadius: '16px',
+                          background: 'transparent',
+                          color: '#FFFFFF',
+                          fontSize: '13px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          transition: 'all 0.3s ease'
+                        }}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 style={{ width: '16px', height: '16px' }} />
                         Delete
                       </button>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-      </main>
+        )}
+      </div>
 
       {/* Block Confirmation Modal */}
       {showBlockModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-orange-600" />
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '24px'
+        }}>
+          <div style={{
+            background: 'rgba(20, 20, 20, 0.95)',
+            backdropFilter: 'blur(30px)',
+            borderRadius: '28px',
+            maxWidth: '400px',
+            width: '100%',
+            padding: '32px',
+            border: '2px solid rgba(239, 68, 68, 0.3)',
+            boxShadow: '0 25px 70px rgba(0, 0, 0, 0.9)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                background: 'rgba(249, 115, 22, 0.2)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid rgba(249, 115, 22, 0.5)'
+              }}>
+                <AlertTriangle style={{ width: '28px', height: '28px', color: '#f97316' }} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900">Block User</h3>
+              <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#FFFFFF' }}>Block User</h3>
             </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to block <span className="font-semibold">{selectedUser.email}</span>? 
+            <p style={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.7)', marginBottom: '28px', lineHeight: '1.6' }}>
+              Are you sure you want to block <span style={{ fontWeight: '700', color: '#FFFFFF' }}>{selectedUser.email}</span>? 
               This user will not be able to access their account.
             </p>
-            <div className="flex gap-3 justify-end">
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => {
                   setShowBlockModal(false)
                   setSelectedUser(null)
                 }}
                 disabled={actionLoading}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                style={{
+                  padding: '14px 28px',
+                  border: '2px solid rgba(239, 68, 68, 0.5)',
+                  borderRadius: '20px',
+                  background: 'transparent',
+                  color: '#FFFFFF',
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  cursor: actionLoading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  opacity: actionLoading ? 0.5 : 1
+                }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleBlockUser}
                 disabled={actionLoading}
-                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50"
+                style={{
+                  padding: '14px 28px',
+                  border: 'none',
+                  borderRadius: '20px',
+                  background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                  color: '#FFFFFF',
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  cursor: actionLoading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 10px 30px rgba(249, 115, 22, 0.5)',
+                  opacity: actionLoading ? 0.5 : 1
+                }}
               >
                 {actionLoading ? 'Blocking...' : 'Block User'}
               </button>
@@ -466,33 +627,83 @@ export default function AdminUsers() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '24px'
+        }}>
+          <div style={{
+            background: 'rgba(20, 20, 20, 0.95)',
+            backdropFilter: 'blur(30px)',
+            borderRadius: '28px',
+            maxWidth: '400px',
+            width: '100%',
+            padding: '32px',
+            border: '2px solid rgba(239, 68, 68, 0.3)',
+            boxShadow: '0 25px 70px rgba(0, 0, 0, 0.9)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                background: 'rgba(239, 68, 68, 0.2)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid rgba(239, 68, 68, 0.5)'
+              }}>
+                <AlertTriangle style={{ width: '28px', height: '28px', color: '#ef4444' }} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900">Delete User</h3>
+              <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#FFFFFF' }}>Delete User</h3>
             </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to permanently delete <span className="font-semibold">{selectedUser.email}</span>? 
+            <p style={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.7)', marginBottom: '28px', lineHeight: '1.6' }}>
+              Are you sure you want to permanently delete <span style={{ fontWeight: '700', color: '#FFFFFF' }}>{selectedUser.email}</span>? 
               This action cannot be undone and will delete all their bookings.
             </p>
-            <div className="flex gap-3 justify-end">
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => {
                   setShowDeleteModal(false)
                   setSelectedUser(null)
                 }}
                 disabled={actionLoading}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                style={{
+                  padding: '14px 28px',
+                  border: '2px solid rgba(239, 68, 68, 0.5)',
+                  borderRadius: '20px',
+                  background: 'transparent',
+                  color: '#FFFFFF',
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  cursor: actionLoading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  opacity: actionLoading ? 0.5 : 1
+                }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteUser}
                 disabled={actionLoading}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                style={{
+                  padding: '14px 28px',
+                  border: 'none',
+                  borderRadius: '20px',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  color: '#FFFFFF',
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  cursor: actionLoading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 10px 30px rgba(239, 68, 68, 0.5)',
+                  opacity: actionLoading ? 0.5 : 1
+                }}
               >
                 {actionLoading ? 'Deleting...' : 'Delete User'}
               </button>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { ArrowLeft } from 'lucide-react'
 import './UserLogin.css'
 
 export default function UserLogin() {
@@ -49,21 +50,18 @@ export default function UserLogin() {
         {/* Background Orbs */}
         <div className="bg-orb orb-1"></div>
         <div className="bg-orb orb-2"></div>
-        <div className="bg-orb orb-3"></div>
 
         {/* Back Button */}
-        <button className="back-btn" onClick={() => navigate('/')}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-        </button>
+        <Link to="/" className="back-nav">
+          <ArrowLeft />
+          <span>Back to Home</span>
+        </Link>
+        <div className="bg-orb orb-3"></div>
 
         {/* Login Card */}
         <div className="login-card">
           <div className="logo-section">
-            <div className="logo-circle">
-              <span className="logo-text-small">HyperMoth</span>
-            </div>
+            <img src="/hyper.jpeg" alt="HyperMoth" className="logo-image-login" />
           </div>
 
           <h1 className="login-title">Welcome Back</h1>

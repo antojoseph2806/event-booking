@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { ArrowLeft } from 'lucide-react'
 import './UserRegister.css'
 
 export default function UserRegister() {
@@ -68,18 +69,15 @@ export default function UserRegister() {
         <div className="bg-orb orb-3"></div>
 
         {/* Back Button */}
-        <button className="back-btn" onClick={() => navigate('/')}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-        </button>
+        <Link to="/" className="back-nav">
+          <ArrowLeft />
+          <span>Back to Home</span>
+        </Link>
 
         {/* Register Card */}
         <div className="register-card">
           <div className="logo-section">
-            <div className="logo-circle">
-              <span className="logo-text-small">HyperMoth</span>
-            </div>
+            <img src="/hyper.jpeg" alt="HyperMoth" className="logo-image-login" />
           </div>
 
           <h1 className="register-title">Create Account</h1>

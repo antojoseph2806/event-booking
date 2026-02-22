@@ -104,9 +104,53 @@ export default function Profile() {
     return (
       <div className="profile-container">
         <div className="profile-screen">
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p className="loading-text">Loading Profile...</p>
+          {/* Animated Background Orbs */}
+          <div className="bg-orb orb-1"></div>
+          <div className="bg-orb orb-2"></div>
+          <div className="bg-orb orb-3"></div>
+
+          {/* Skeleton Header */}
+          <header className="profile-header">
+            <button className="back-btn skeleton-pulse">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <h1 className="header-title skeleton-pulse">My Profile</h1>
+            <div className="menu-icon skeleton-pulse">
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+              <div className="menu-line"></div>
+            </div>
+          </header>
+
+          {/* Skeleton Profile Card */}
+          <div className="profile-card">
+            <div className="skeleton-avatar skeleton-shimmer"></div>
+            <div className="skeleton-name skeleton-shimmer"></div>
+            <div className="skeleton-email skeleton-shimmer"></div>
+            <div className="skeleton-date skeleton-shimmer"></div>
+          </div>
+
+          {/* Skeleton Stats */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="skeleton-stat-value skeleton-shimmer"></div>
+              <div className="skeleton-stat-label skeleton-shimmer"></div>
+            </div>
+            <div className="stat-card">
+              <div className="skeleton-stat-value skeleton-shimmer"></div>
+              <div className="skeleton-stat-label skeleton-shimmer"></div>
+            </div>
+          </div>
+
+          {/* Loading Indicator */}
+          <div className="loading-indicator">
+            <div className="loading-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </div>
         </div>
       </div>
@@ -197,7 +241,6 @@ export default function Profile() {
               <label className="form-label">Email</label>
               <div className="form-display locked">
                 {profileData.email}
-                <span className="locked-badge">Cannot be changed</span>
               </div>
             </div>
 

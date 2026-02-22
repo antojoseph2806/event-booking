@@ -37,7 +37,44 @@ function App() {
           </Routes>
         </div>
       </Router>
-      <Toaster position="top-right" />
+      <Toaster 
+        position="top-center"
+        containerClassName="toast-container"
+        toastOptions={{
+          duration: 3000,
+          className: 'custom-toast',
+          style: {
+            background: 'rgba(20, 20, 20, 0.95)',
+            color: '#ffffff',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '12px',
+            padding: '16px',
+            fontSize: '14px',
+            fontWeight: '500',
+            maxWidth: '360px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
+            margin: '0 auto',
+          },
+          success: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#ffffff',
+            },
+            style: {
+              border: '1px solid rgba(239, 68, 68, 0.5)',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#ffffff',
+            },
+            style: {
+              border: '1px solid rgba(239, 68, 68, 0.5)',
+            },
+          },
+        }}
+      />
     </AuthProvider>
   )
 }
