@@ -11,6 +11,32 @@ export default function Home() {
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
 
+  // 3D Parallax Mouse Tracking
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      // Calculate mouse position relative to center of screen (-1 to 1)
+      const x = (e.clientX / window.innerWidth - 0.5) * 2;
+      const y = (e.clientY / window.innerHeight - 0.5) * 2;
+
+      // Map to degrees for rotation (e.g. max 10 degrees)
+      const rotateX = -y * 10;
+      const rotateY = x * 10;
+
+      document.documentElement.style.setProperty('--mouse-x', `${rotateY}deg`);
+      document.documentElement.style.setProperty('--mouse-y', `${rotateX}deg`);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+
+    // Reset on mount
+    document.documentElement.style.setProperty('--mouse-x', '0deg');
+    document.documentElement.style.setProperty('--mouse-y', '0deg');
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
+
   // Fetch events from backend
   useEffect(() => {
     const fetchEvents = async () => {
@@ -54,7 +80,7 @@ export default function Home() {
   // Handle touch end
   const handleTouchEnd = () => {
     if (!touchStart || !touchEnd) return
-    
+
     const distance = touchStart - touchEnd
     const isLeftSwipe = distance > 50
     const isRightSwipe = distance < -50
@@ -107,7 +133,7 @@ export default function Home() {
                 <div className="skeleton-image"></div>
               </div>
             </div>
-            
+
             {/* Skeleton Indicators */}
             <div className="carousel-indicators">
               <div className="indicator skeleton-pulse"></div>
@@ -211,11 +237,19 @@ export default function Home() {
         {/* Top Navigation */}
         <header className="top-nav">
           <img src="/hyper.jpeg" alt="HyperMoth" className="logo-image" />
+          {/* Mobile hamburger */}
           <div className="menu-icon" onClick={() => setMenuOpen(!menuOpen)}>
             <div className="menu-line"></div>
             <div className="menu-line"></div>
             <div className="menu-line"></div>
           </div>
+          {/* Desktop nav links */}
+          <nav className="desktop-nav-links">
+            <button className="desktop-nav-btn" onClick={() => navigate('/login')}>Login</button>
+            <button className="desktop-nav-btn outline" onClick={() => navigate('/register')}>Sign Up</button>
+            <div className="desktop-nav-divider"></div>
+            <button className="desktop-nav-btn" onClick={() => navigate('/admin/login')}>Admin</button>
+          </nav>
         </header>
 
         {/* Dropdown Menu */}
@@ -241,54 +275,64 @@ export default function Home() {
           </div>
         )}
 
-        {/* Event Carousel */}
-        <div 
-          className="carousel-section"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          <div className="carousel-container">
-            {events.map((event, index) => (
-              <div
-                key={event.id}
-                className={`carousel-card ${activeCard === index ? 'active' : ''} ${
-                  index < activeCard ? 'left' : index > activeCard ? 'right' : ''
-                }`}
-                onClick={() => navigate(`/event/${event.id}`)}
-              >
-                <div className="card-overlay"></div>
-                <img 
-                  src={event.image_url || 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400&h=600&fit=crop'} 
-                  alt={event.title} 
-                  className="event-image" 
-                />
-                <div className="card-glow"></div>
-              </div>
-            ))}
-          </div>
-          
-          {/* Carousel Indicators */}
-          <div className="carousel-indicators">
-            {events.map((_, index) => (
-              <div
-                key={index}
-                className={`indicator ${activeCard === index ? 'active' : ''}`}
-                onClick={() => setActiveCard(index)}
-              ></div>
-            ))}
-          </div>
-        </div>
+        {/* Hero Desktop Wrapper: on mobile, transparent container; on desktop, two-column grid */}
+        <div className="hero-desktop-wrapper">
 
-        {/* Event Details */}
-        <div className="event-details">
-          <div className="event-info">
-            <h3 className="event-title">{events[activeCard].title}</h3>
-            <p className="event-date">{formatDate(events[activeCard].date)}</p>
-            <p className="event-locations">{events[activeCard].location}</p>
-            <p className="event-price">₹{events[activeCard].price}</p>
+          {/* Event Carousel (top on mobile → right on desktop via CSS order) */}
+          <div
+            className="carousel-section"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="carousel-container">
+              {events.map((event, index) => (
+                <div
+                  key={event.id}
+                  className={`carousel-card ${activeCard === index ? 'active' : ''} ${index < activeCard ? 'left' : index > activeCard ? 'right' : ''
+                    }`}
+                  onClick={() => navigate(`/event/${event.id}`)}
+                >
+                  <div className="card-overlay"></div>
+                  <img
+                    src={event.image_url || 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400&h=600&fit=crop'}
+                    alt={event.title}
+                    className="event-image"
+                  />
+                  <div className="card-glow"></div>
+                </div>
+              ))}
+            </div>
+
+            {/* Carousel Indicators */}
+            <div className="carousel-indicators">
+              {events.map((_, index) => (
+                <div
+                  key={index}
+                  className={`indicator ${activeCard === index ? 'active' : ''}`}
+                  onClick={() => setActiveCard(index)}
+                ></div>
+              ))}
+            </div>
           </div>
-        </div>
+
+          {/* Event Details (below carousel on mobile → left on desktop via CSS order:1) */}
+          <div className="event-details">
+            <div className="event-info">
+              <h3 className="event-title">{events[activeCard].title}</h3>
+              <p className="event-date">{formatDate(events[activeCard].date)}</p>
+              <p className="event-locations">{events[activeCard].location}</p>
+              <p className="event-price">₹{events[activeCard].price}</p>
+              <button
+                className="desktop-view-event-btn"
+                onClick={() => navigate(`/event/${events[activeCard].id}`)}
+              >
+                View Event Details
+              </button>
+            </div>
+          </div>
+
+        </div>{/* end hero-desktop-wrapper */}
 
         {/* Featured Artists Section */}
         <div className="featured-section">
@@ -302,9 +346,9 @@ export default function Home() {
           <div className="artists-grid">
             <div className="artist-card">
               <div className="artist-image-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=400&fit=crop" 
-                  alt="Artist" 
+                <img
+                  src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=400&fit=crop"
+                  alt="Artist"
                   className="artist-image"
                 />
                 <div className="artist-overlay"></div>
@@ -317,9 +361,9 @@ export default function Home() {
 
             <div className="artist-card">
               <div className="artist-image-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=400&fit=crop" 
-                  alt="Artist" 
+                <img
+                  src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=400&fit=crop"
+                  alt="Artist"
                   className="artist-image"
                 />
                 <div className="artist-overlay"></div>
@@ -332,9 +376,9 @@ export default function Home() {
 
             <div className="artist-card">
               <div className="artist-image-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=300&h=400&fit=crop" 
-                  alt="Artist" 
+                <img
+                  src="https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=300&h=400&fit=crop"
+                  alt="Artist"
                   className="artist-image"
                 />
                 <div className="artist-overlay"></div>
@@ -347,9 +391,9 @@ export default function Home() {
 
             <div className="artist-card">
               <div className="artist-image-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=300&h=400&fit=crop" 
-                  alt="Artist" 
+                <img
+                  src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=300&h=400&fit=crop"
+                  alt="Artist"
                   className="artist-image"
                 />
                 <div className="artist-overlay"></div>
@@ -362,9 +406,9 @@ export default function Home() {
 
             <div className="artist-card">
               <div className="artist-image-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=300&h=400&fit=crop" 
-                  alt="Artist" 
+                <img
+                  src="https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=300&h=400&fit=crop"
+                  alt="Artist"
                   className="artist-image"
                 />
                 <div className="artist-overlay"></div>
@@ -377,9 +421,9 @@ export default function Home() {
 
             <div className="artist-card">
               <div className="artist-image-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=300&h=400&fit=crop" 
-                  alt="Artist" 
+                <img
+                  src="https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=300&h=400&fit=crop"
+                  alt="Artist"
                   className="artist-image"
                 />
                 <div className="artist-overlay"></div>
@@ -392,9 +436,9 @@ export default function Home() {
 
             <div className="artist-card">
               <div className="artist-image-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300&h=400&fit=crop" 
-                  alt="Artist" 
+                <img
+                  src="https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300&h=400&fit=crop"
+                  alt="Artist"
                   className="artist-image"
                 />
                 <div className="artist-overlay"></div>
@@ -407,9 +451,9 @@ export default function Home() {
 
             <div className="artist-card">
               <div className="artist-image-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=300&h=400&fit=crop" 
-                  alt="Artist" 
+                <img
+                  src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=300&h=400&fit=crop"
+                  alt="Artist"
                   className="artist-image"
                 />
                 <div className="artist-overlay"></div>
@@ -480,27 +524,27 @@ export default function Home() {
             <div className="contact-form-wrapper">
               <form className="contact-form" onSubmit={(e) => e.preventDefault()}>
                 <div className="form-row">
-                  <input 
-                    type="text" 
-                    placeholder="Your Name" 
+                  <input
+                    type="text"
+                    placeholder="Your Name"
                     className="contact-input"
                     required
                   />
-                  <input 
-                    type="email" 
-                    placeholder="Your Email" 
+                  <input
+                    type="email"
+                    placeholder="Your Email"
                     className="contact-input"
                     required
                   />
                 </div>
-                <input 
-                  type="text" 
-                  placeholder="Subject" 
+                <input
+                  type="text"
+                  placeholder="Subject"
                   className="contact-input"
                   required
                 />
-                <textarea 
-                  placeholder="Your Message" 
+                <textarea
+                  placeholder="Your Message"
                   className="contact-textarea"
                   rows="4"
                   required

@@ -358,11 +358,21 @@ export default function AdminDashboard() {
 
         <header className="top-nav">
           <img src="/hyper.jpeg" alt="HyperMoth" className="logo-image" />
+          {/* Mobile hamburger */}
           <div className="menu-icon" onClick={handleMenuToggle}>
             <div className="menu-line"></div>
             <div className="menu-line"></div>
             <div className="menu-line"></div>
           </div>
+          {/* Desktop nav links */}
+          <nav className="desktop-nav-links">
+            <button className="desktop-nav-btn" onClick={() => handleMenuNavigation('/admin/dashboard')}>Dashboard</button>
+            <button className="desktop-nav-btn" onClick={() => handleMenuNavigation('/admin/dashboard/events')}>Events</button>
+            <button className="desktop-nav-btn" onClick={() => handleMenuNavigation('/admin/dashboard/users')}>Users</button>
+            <button className="desktop-nav-btn" onClick={() => handleMenuNavigation('/admin/dashboard/bookings')}>Bookings</button>
+            <div className="desktop-nav-divider"></div>
+            <button className="desktop-nav-btn outline" onClick={handleLogout}>Logout</button>
+          </nav>
         </header>
 
         {menuOpen && (
@@ -426,53 +436,66 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div 
-          className="carousel-section"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          <div className="carousel-container">
-            {events.map((event, index) => (
-              <div
-                key={event.id}
-                className={`carousel-card ${activeCard === index ? 'active' : ''} ${index < activeCard ? 'left' : index > activeCard ? 'right' : ''}`}
-                onClick={handleEventClick}
-              >
-                <div className="card-overlay"></div>
-                <img
-                  src={event.image_url || 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400&h=600&fit=crop'}
-                  alt={event.title}
-                  className="event-image"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <div className="card-glow"></div>
-              </div>
-            ))}
-          </div>
+        {/* Hero Desktop Wrapper */}
+        <div className="hero-desktop-wrapper">
 
-          <div className="carousel-indicators">
-            {events.map((_, index) => (
-              <div
-                key={index}
-                className={`indicator ${activeCard === index ? 'active' : ''}`}
-                onClick={() => setActiveCard(index)}
-              ></div>
-            ))}
-          </div>
-        </div>
+          {/* Event Carousel (top on mobile → right on desktop) */}
+          <div 
+            className="carousel-section"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="carousel-container">
+              {events.map((event, index) => (
+                <div
+                  key={event.id}
+                  className={`carousel-card ${activeCard === index ? 'active' : ''} ${index < activeCard ? 'left' : index > activeCard ? 'right' : ''}`}
+                  onClick={handleEventClick}
+                >
+                  <div className="card-overlay"></div>
+                  <img
+                    src={event.image_url || 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400&h=600&fit=crop'}
+                    alt={event.title}
+                    className="event-image"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <div className="card-glow"></div>
+                </div>
+              ))}
+            </div>
 
-        {activeEvent && (
-          <div className="event-details">
-            <div className="event-info">
-              <h3 className="event-title">{activeEvent.title}</h3>
-              <p className="event-date">{formatDate(activeEvent.date)}</p>
-              <p className="event-locations">{activeEvent.location}</p>
-              <p className="event-price">₹{activeEvent.price}</p>
+            <div className="carousel-indicators">
+              {events.map((_, index) => (
+                <div
+                  key={index}
+                  className={`indicator ${activeCard === index ? 'active' : ''}`}
+                  onClick={() => setActiveCard(index)}
+                ></div>
+              ))}
             </div>
           </div>
-        )}
+
+          {/* Event Details (below on mobile → left on desktop) */}
+          {activeEvent && (
+            <div className="event-details">
+              <div className="event-info">
+                <h3 className="event-title">{activeEvent.title}</h3>
+                <p className="event-date">{formatDate(activeEvent.date)}</p>
+                <p className="event-locations">{activeEvent.location}</p>
+                <p className="event-price">₹{activeEvent.price}</p>
+                <button
+                  className="desktop-view-event-btn"
+                  onClick={() => navigate('/admin/dashboard/events')}
+                >
+                  Manage Events
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>{/* end hero-desktop-wrapper */}
 
         {/* QR Scanner Modal */}
         {showScanner && (

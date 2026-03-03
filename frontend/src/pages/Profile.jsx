@@ -160,6 +160,44 @@ export default function Profile() {
   return (
     <div className="profile-container">
       <div className="profile-screen">
+        {/* Desktop Sidebar */}
+        <aside className="desktop-sidebar">
+          <img src="/hyper.jpeg" className="sidebar-logo" alt="HyperMoth" />
+          <button className="sidebar-nav-item" onClick={() => navigate('/dashboard')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            </svg>
+            Dashboard
+          </button>
+          <button className="sidebar-nav-item" onClick={() => navigate('/dashboard/bookings')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            My Bookings
+          </button>
+          <button className="sidebar-nav-item active" onClick={() => navigate('/dashboard/profile')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Profile
+          </button>
+          <div className="sidebar-divider"></div>
+          <button className="sidebar-nav-item sidebar-logout" onClick={handleLogout}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Logout
+          </button>
+        </aside>
+
+        {/* Main Content */}
+        <div className="profile-main">
         {/* Background Orbs */}
         <div className="bg-orb orb-1"></div>
         <div className="bg-orb orb-2"></div>
@@ -292,6 +330,7 @@ export default function Profile() {
             </button>
           </div>
         </div>
+        </div>{/* end profile-main */}
       </div>
     </div>
   )

@@ -372,3 +372,39 @@
   margin: 0 auto;
   display: block;
 }
+
+/* ============================
+   DESKTOP RESPONSIVE STYLES
+   ============================ */
+@media (min-width: 1024px) {
+  .login-container {
+    background: #000000;
+    background-image:
+      radial-gradient(circle at 25% 40%, rgba(220, 38, 38, 0.12) 0%, transparent 55%),
+      radial-gradient(circle at 75% 70%, rgba(239, 68, 68, 0.09) 0%, transparent 50%);
+  }
+
+  .login-screen {
+    max-width: 520px;
+    min-height: auto;
+    border-radius: 32px;
+    margin: 40px auto;
+    padding: 48px 44px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    box-shadow:
+      0 40px 120px rgba(0, 0, 0, 0.7),
+      0 0 80px rgba(239, 68, 68, 0.06);
+    background: rgba(10, 10, 10, 0.95);
+  }
+
+  .login-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .back-nav {
+    margin-bottom: 32px;
+  }
+}

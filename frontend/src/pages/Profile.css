@@ -639,3 +639,70 @@
     opacity: 1;
   }
 }
+
+/* ============================
+   DESKTOP RESPONSIVE STYLES
+   ============================ */
+@media (min-width: 1024px) {
+  .profile-container {
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
+
+  .profile-screen {
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    display: flex;
+    flex-direction: row;
+    min-height: 100vh;
+  }
+
+  /* Desktop sidebar */
+  .profile-screen > .desktop-sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 260px;
+    min-height: 100vh;
+    background: rgba(8, 8, 8, 0.98);
+    border-right: 1px solid rgba(239, 68, 68, 0.15);
+    padding: 32px 20px;
+    position: sticky;
+    top: 0;
+    flex-shrink: 0;
+    z-index: 50;
+  }
+
+  .profile-main {
+    flex: 1;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  .profile-header {
+    border-radius: 0;
+    padding: 20px 48px;
+  }
+
+  .back-btn {
+    left: 48px;
+  }
+
+  .menu-icon {
+    display: none;
+  }
+
+  .dropdown-menu {
+    display: none !important;
+  }
+
+  .profile-content {
+    padding: 32px 48px;
+    max-width: 800px;
+  }
+
+  .header-title {
+    font-size: 24px;
+  }
+}

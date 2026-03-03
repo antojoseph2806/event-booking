@@ -226,6 +226,14 @@ export default function AdminEvents() {
             <div className="menu-line"></div>
             <div className="menu-line"></div>
           </div>
+          <nav className="desktop-nav-links">
+            <button className="desktop-nav-btn" onClick={() => handleMenuNavigation('/admin/dashboard')}>Dashboard</button>
+            <button className="desktop-nav-btn active" onClick={() => handleMenuNavigation('/admin/dashboard/events')}>Events</button>
+            <button className="desktop-nav-btn" onClick={() => handleMenuNavigation('/admin/dashboard/users')}>Users</button>
+            <button className="desktop-nav-btn" onClick={() => handleMenuNavigation('/admin/dashboard/bookings')}>Bookings</button>
+            <div className="desktop-nav-divider"></div>
+            <button className="desktop-nav-btn outline" onClick={handleLogout}>Logout</button>
+          </nav>
         </div>
 
         {menuOpen && (
@@ -253,9 +261,23 @@ export default function AdminEvents() {
           </div>
         )}
 
-        {/* Create New Event Button */}
+        <div className="admin-page-body">
+        {/* Desktop Page Header */}
+        <div className="admin-page-header">
+          <div>
+            <h1 className="admin-page-title">Manage Events</h1>
+            <p className="admin-page-subtitle">{events.length} event{events.length !== 1 ? 's' : ''} total</p>
+          </div>
+          <button onClick={handleAddEvent} className="admin-action-btn">
+            <Plus style={{ width: '18px', height: '18px' }} />
+            Create Event
+          </button>
+        </div>
+
+        {/* Create New Event Button (mobile only) */}
         <button
           onClick={handleAddEvent}
+          className="admin-mobile-create-btn"
           style={{
             width: '100%',
             padding: '16px',
@@ -292,12 +314,7 @@ export default function AdminEvents() {
             </p>
           </div>
         ) : (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-            paddingBottom: '40px'
-          }}>
+          <div className="admin-cards-grid">
             {formattedEvents.map((event) => (
               <div
                 key={event.id}
@@ -507,6 +524,7 @@ export default function AdminEvents() {
             ))}
           </div>
         )}
+        </div>{/* end admin-page-body */}
       </div>
 
       {/* Add/Edit Event Modal */}

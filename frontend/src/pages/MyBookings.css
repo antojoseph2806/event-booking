@@ -321,6 +321,35 @@
   border: 1px solid rgba(156, 163, 175, 0.4);
 }
 
+/* Desktop-only card elements — hidden on mobile */
+.booking-details-header {
+  display: block;
+}
+
+.booking-header-meta {
+  display: none;
+}
+
+.desktop-badge {
+  display: none;
+}
+
+.card-price-tag {
+  display: none;
+}
+
+.card-event-date {
+  display: none;
+}
+
+.card-location {
+  display: none;
+}
+
+.card-price-line {
+  display: none;
+}
+
 /* Booking Details */
 .booking-details {
   padding: 20px;
@@ -575,4 +604,211 @@
     transform: scale(1.2);
     opacity: 1;
   }
+}
+
+/* ============================
+   DESKTOP RESPONSIVE STYLES
+   ============================ */
+@media (min-width: 1024px) {
+  .bookings-container {
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
+
+  .bookings-screen {
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    display: flex;
+    flex-direction: row;
+    min-height: 100vh;
+  }
+
+  /* Desktop sidebar */
+  .bookings-screen > .desktop-sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 260px;
+    min-height: 100vh;
+    background: rgba(8, 8, 8, 0.98);
+    border-right: 1px solid rgba(239, 68, 68, 0.15);
+    padding: 32px 20px;
+    position: sticky;
+    top: 0;
+    flex-shrink: 0;
+    z-index: 50;
+  }
+
+  .bookings-main {
+    flex: 1;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  .bookings-header {
+    position: sticky;
+    padding: 20px 48px;
+    border-radius: 0;
+  }
+
+  .back-btn {
+    left: 48px;
+  }
+
+  .menu-icon {
+    display: none;
+  }
+
+  .dropdown-menu {
+    display: none !important;
+  }
+
+  .bookings-content {
+    padding: 32px 48px;
+  }
+
+  .header-title {
+    font-size: 24px;
+  }
+
+  /* ==============================
+     GRID BOOKING CARDS
+     (Lookahead-style grid design)
+     ============================== */
+  .bookings-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 28px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .booking-card {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(14, 14, 14, 0.95);
+    overflow: hidden;
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .booking-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(239, 68, 68, 0.35);
+    box-shadow:
+      0 0 0 1px rgba(239, 68, 68, 0.15),
+      0 12px 40px rgba(0, 0, 0, 0.7),
+      0 0 60px rgba(239, 68, 68, 0.08);
+  }
+
+  /* Square image */
+  .booking-image {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    height: auto;
+    flex-shrink: 0;
+    position: relative;
+    border-radius: 0;
+  }
+
+  .booking-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0;
+    display: block;
+  }
+
+  .booking-image .image-overlay {
+    display: none;
+  }
+
+  /* Hide mobile badge on desktop */
+  .booking-image .status-badge {
+    display: none !important;
+  }
+
+  /* Details block */
+  .booking-details {
+    padding: 14px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    flex: 1;
+  }
+
+  /* Pink date line */
+  .card-event-date {
+    display: block;
+    color: #e91e8c;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    letter-spacing: 0.2px;
+  }
+
+  /* Title */
+  .booking-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 6px;
+    line-height: 1.35;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  /* Location */
+  .card-location {
+    display: block;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    font-weight: 400;
+    margin: 0 0 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Price */
+  .card-price-line {
+    display: block;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 14px;
+  }
+
+  /* Hide mobile-only info rows */
+  .booking-info {
+    display: none;
+  }
+
+  /* Buttons */
+  .booking-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+    margin-bottom: 0;
+  }
+
+  .action-btn {
+    flex: 1;
+    padding: 9px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 9px;
+    letter-spacing: 0.2px;
+  }
+
+  .booking-footer {
+    display: none;
+  }
+
 }

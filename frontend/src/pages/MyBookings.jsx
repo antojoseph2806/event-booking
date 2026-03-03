@@ -150,6 +150,44 @@ export default function MyBookings() {
   return (
     <div className="bookings-container">
       <div className="bookings-screen">
+        {/* Desktop Sidebar */}
+        <aside className="desktop-sidebar">
+          <img src="/hyper.jpeg" className="sidebar-logo" alt="HyperMoth" />
+          <button className="sidebar-nav-item" onClick={() => navigate('/dashboard')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            </svg>
+            Dashboard
+          </button>
+          <button className="sidebar-nav-item active" onClick={() => navigate('/dashboard/bookings')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            My Bookings
+          </button>
+          <button className="sidebar-nav-item" onClick={() => navigate('/dashboard/profile')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Profile
+          </button>
+          <div className="sidebar-divider"></div>
+          <button className="sidebar-nav-item sidebar-logout" onClick={async () => { await signOut(); navigate('/'); }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Logout
+          </button>
+        </aside>
+
+        {/* Main Content */}
+        <div className="bookings-main">
         {/* Background Orbs */}
         <div className="bg-orb orb-1"></div>
         <div className="bg-orb orb-2"></div>
@@ -215,61 +253,73 @@ export default function MyBookings() {
             </div>
           ) : (
             <div className="bookings-list">
-              {bookings.map((booking) => (
-                <div key={booking.id} className="booking-card">
-                  <div className="booking-image">
-                    <img
-                      src={booking.events?.image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'}
-                      alt={booking.events?.title}
-                    />
-                    <div className="image-overlay"></div>
-                    <span className={`status-badge ${
-                      new Date(booking.events?.date) > new Date() ? 'upcoming' : 'past'
-                    }`}>
-                      {new Date(booking.events?.date) > new Date() ? 'Upcoming' : 'Past'}
-                    </span>
+              {bookings.map((booking) => {
+                const isUpcoming = new Date(booking.events?.date) > new Date();
+                return (
+                  <div key={booking.id} className="booking-card">
+                    {/* Image */}
+                    <div className="booking-image">
+                      <img
+                        src={booking.events?.image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'}
+                        alt={booking.events?.title}
+                      />
+                      <div className="image-overlay"></div>
+                      <span className={`status-badge ${isUpcoming ? 'upcoming' : 'past'}`}>
+                        {isUpcoming ? 'Upcoming' : 'Past'}
+                      </span>
+                    </div>
+
+                    {/* Details */}
+                    <div className="booking-details">
+                      {/* Desktop-only: pink date */}
+                      <p className="card-event-date">{formatDate(booking.events?.date)}</p>
+
+                      <h3 className="booking-title">{booking.events?.title}</h3>
+
+                      {/* Desktop-only: location + price */}
+                      <p className="card-location">{booking.events?.location}</p>
+                      <p className="card-price-line">Total &nbsp;&#x20B9;{(booking.events?.price * booking.quantity).toFixed(2)}</p>
+
+                      {/* Mobile-only: info rows */}
+                      <div className="booking-info">
+                        <div className="info-row">
+                          <span className="info-label">Date</span>
+                          <span className="info-value">{formatDate(booking.events?.date)} &bull; {formatTime(booking.events?.date)}</span>
+                        </div>
+                        <div className="info-row">
+                          <span className="info-label">Location</span>
+                          <span className="info-value">{booking.events?.location}</span>
+                        </div>
+                        <div className="info-row">
+                          <span className="info-label">Tickets</span>
+                          <span className="info-value">{booking.quantity} {booking.quantity === 1 ? 'Ticket' : 'Tickets'}</span>
+                        </div>
+                        <div className="info-row">
+                          <span className="info-label">Total</span>
+                          <span className="info-value price">&#x20B9;{(booking.events?.price * booking.quantity).toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      <div className="booking-actions">
+                        <button className="action-btn primary" onClick={() => handleViewTicket(booking)}>
+                          View Ticket
+                        </button>
+                        <button className="action-btn secondary" onClick={() => handleDownloadQR(booking)}>
+                          Download QR
+                        </button>
+                      </div>
+
+                      <div className="booking-footer">
+                        <p className="booking-date">Booked on {formatDate(booking.created_at)}</p>
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="booking-details">
-                    <h3 className="booking-title">{booking.events?.title}</h3>
-                    
-                    <div className="booking-info">
-                      <div className="info-row">
-                        <span className="info-label">Date</span>
-                        <span className="info-value">{formatDate(booking.events?.date)} • {formatTime(booking.events?.date)}</span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-label">Location</span>
-                        <span className="info-value">{booking.events?.location}</span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-label">Tickets</span>
-                        <span className="info-value">{booking.quantity} {booking.quantity === 1 ? 'Ticket' : 'Tickets'}</span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-label">Total</span>
-                        <span className="info-value price">₹{(booking.events?.price * booking.quantity).toFixed(2)}</span>
-                      </div>
-                    </div>
-
-                    <div className="booking-actions">
-                      <button className="action-btn primary" onClick={() => handleViewTicket(booking)}>
-                        View Ticket
-                      </button>
-                      <button className="action-btn secondary" onClick={() => handleDownloadQR(booking)}>
-                        Download QR
-                      </button>
-                    </div>
-
-                    <div className="booking-footer">
-                      <p className="booking-date">Booked on {formatDate(booking.created_at)}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
+        </div>{/* end bookings-main */}
       </div>
     </div>
   )
