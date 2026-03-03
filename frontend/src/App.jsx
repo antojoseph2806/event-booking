@@ -8,6 +8,7 @@ import Profile from './pages/Profile'
 import AdminLogin from './pages/AdminLogin'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminEvents from './pages/AdminEvents'
+import AdminArtists from './pages/AdminArtists'
 import AdminUsers from './pages/AdminUsers'
 import AdminBookings from './pages/AdminBookings'
 import TicketPage from './pages/TicketPage'
@@ -31,6 +32,7 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/dashboard/events" element={<AdminEvents />} />
+          <Route path="/admin/dashboard/artists" element={<AdminArtists />} />
           <Route path="/admin/dashboard/users" element={<AdminUsers />} />
           <Route path="/admin/dashboard/bookings" element={<AdminBookings />} />
           <Route path="/ticket" element={<TicketPage />} />

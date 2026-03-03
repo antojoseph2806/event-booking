@@ -1,94 +1,89 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Shield, Mail, Lock, ArrowLeft } from 'lucide-react'
+import { X, Mail, Lock, Shield } from 'lucide-react'
+import toast from 'react-hot-toast'
 import './AdminLogin.css'
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { signIn } = useAuth()
   const navigate = useNavigate()
 
+  const handleClose = () => {
+    navigate('/')
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
     setLoading(true)
 
     const { data, error } = await signIn(email, password)
     
     if (error) {
-      setError(error.message)
+      toast.error(error.message || 'Login failed')
       setLoading(false)
     } else {
       // Check if user is admin
       if (data.user?.user_metadata?.role === 'admin') {
+        toast.success('Welcome back, Admin!')
         navigate('/admin/dashboard')
       } else {
-        setError('Unauthorized: Admin access only')
+        toast.error('Unauthorized: Admin access only')
         setLoading(false)
       }
     }
   }
 
   return (
-    <div className="admin-login-container">
-      <div className="admin-login-screen">
-        {/* Background Orbs */}
-        <div className="bg-orb orb-1"></div>
-        <div className="bg-orb orb-2"></div>
+    <div className="admin-modal-overlay" onClick={handleClose}>
+      <div className="admin-modal-container" onClick={(e) => e.stopPropagation()}>
+        {/* Close Button */}
+        <button className="modal-close-btn" onClick={handleClose}>
+          <X />
+        </button>
 
-        {/* Back Button */}
-        <Link to="/" className="back-nav">
-          <ArrowLeft />
-          <span>Back to Home</span>
-        </Link>
-
-        {/* Login Content */}
-        <div className="login-content">
-          {/* Title Section */}
-          <div className="admin-title-section">
-            <h1 className="admin-title">Admin Portal</h1>
-            <p className="admin-subtitle">Secure admin access</p>
+        {/* Modal Content */}
+        <div className="modal-content">
+          {/* Admin Badge */}
+          <div className="admin-badge">
+            <Shield className="admin-shield-icon" />
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
+          <h2 className="modal-title">Admin Portal</h2>
+          <p className="modal-subtitle">Secure access for administrators only</p>
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="admin-form">
-            <div className="form-group">
-              <label className="form-label">Admin Email</label>
-              <div className="input-wrapper">
+          <form onSubmit={handleSubmit} className="admin-form-modal">
+            <div className="form-group-modal">
+              <label className="form-label-modal">Admin Email</label>
+              <div className="input-with-icon">
                 <Mail className="input-icon" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="admin-input"
+                  className="form-input-modal"
                   placeholder="Enter admin email"
                   required
+                  autoComplete="email"
                 />
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Password</label>
-              <div className="input-wrapper">
+            <div className="form-group-modal">
+              <label className="form-label-modal">Password</label>
+              <div className="input-with-icon">
                 <Lock className="input-icon" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="admin-input"
+                  className="form-input-modal"
                   placeholder="Enter password"
                   required
+                  autoComplete="current-password"
                 />
               </div>
             </div>
@@ -96,15 +91,20 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="admin-submit-btn"
+              className="submit-btn-modal admin-btn"
             >
-              {loading ? 'Signing in...' : 'Admin Sign In'}
+              {loading ? (
+                <span className="loading-spinner-small"></span>
+              ) : 'Admin Sign In'}
             </button>
           </form>
 
-          {/* User Login Link */}
-          <div className="user-login-link">
-            <Link to="/login">User Login</Link>
+          <div className="modal-footer-section">
+            <div className="divider-line-full"></div>
+            
+            <Link to="/login" className="user-login-link">
+              User Login
+            </Link>
           </div>
         </div>
       </div>

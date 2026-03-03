@@ -229,6 +229,7 @@ export default function AdminEvents() {
           <nav className="desktop-nav-links">
             <button className="desktop-nav-btn" onClick={() => handleMenuNavigation('/admin/dashboard')}>Dashboard</button>
             <button className="desktop-nav-btn active" onClick={() => handleMenuNavigation('/admin/dashboard/events')}>Events</button>
+            <button className="desktop-nav-btn" onClick={() => handleMenuNavigation('/admin/dashboard/artists')}>Artists</button>
             <button className="desktop-nav-btn" onClick={() => handleMenuNavigation('/admin/dashboard/users')}>Users</button>
             <button className="desktop-nav-btn" onClick={() => handleMenuNavigation('/admin/dashboard/bookings')}>Bookings</button>
             <div className="desktop-nav-divider"></div>
@@ -245,6 +246,10 @@ export default function AdminEvents() {
             <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/events')}>
               <CalendarDays />
               <span>Manage Events</span>
+            </button>
+            <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/artists')}>
+              <Users />
+              <span>Manage Artists</span>
             </button>
             <button className="menu-item" onClick={() => handleMenuNavigation('/admin/dashboard/bookings')}>
               <Calendar />

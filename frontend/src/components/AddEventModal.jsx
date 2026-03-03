@@ -147,6 +147,7 @@ export default function AddEventModal({ isOpen, onClose, onEventSaved, event = n
 
     setSelectedImage(file)
     
+    // Show preview immediately
     const reader = new FileReader()
     reader.onload = (e) => {
       setImagePreview(e.target.result)
@@ -158,6 +159,7 @@ export default function AddEventModal({ isOpen, onClose, onEventSaved, event = n
       const fileExt = file.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`
       
+      // Try to upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from('event-images')
         .upload(fileName, file, {
@@ -165,8 +167,23 @@ export default function AddEventModal({ isOpen, onClose, onEventSaved, event = n
           upsert: false
         })
 
-      if (error) throw error
+      if (error) {
+        console.error('Storage upload error:', error)
+        
+        // If bucket doesn't exist, show helpful message
+        if (error.message.includes('Bucket not found') || error.message.includes('bucket')) {
+          alert('Storage bucket not set up. Please use an image URL instead or set up Supabase Storage bucket "event-images".')
+        } else {
+          alert('Failed to upload image: ' + error.message)
+        }
+        
+        setSelectedImage(null)
+        setImagePreview(null)
+        setUploading(false)
+        return
+      }
 
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('event-images')
         .getPublicUrl(fileName)
@@ -176,23 +193,15 @@ export default function AddEventModal({ isOpen, onClose, onEventSaved, event = n
         image_url: publicUrl
       }))
 
+      console.log('Image uploaded successfully:', publicUrl)
+
     } catch (error) {
       console.error('Error uploading image:', error)
-      let errorMessage = 'Failed to upload image';
-      
-      if (error.message.includes('Bucket not found')) {
-        errorMessage = 'Storage bucket not found. Please set up Supabase Storage bucket first.';
-      } else if (error.message.includes('400')) {
-        errorMessage = 'Invalid request. Please check your Supabase Storage configuration.';
-      } else {
-        errorMessage += ': ' + error.message;
-      }
-      
-      alert(errorMessage);
-      setSelectedImage(null);
-      setImagePreview(null);
+      alert('Failed to upload image: ' + error.message)
+      setSelectedImage(null)
+      setImagePreview(null)
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
   }
 
@@ -506,7 +515,7 @@ export default function AddEventModal({ isOpen, onClose, onEventSaved, event = n
                   </div>
                 )}
                 
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative', marginBottom: '12px' }}>
                   <input
                     type="file"
                     accept="image/*"
@@ -554,8 +563,31 @@ export default function AddEventModal({ isOpen, onClose, onEventSaved, event = n
                   </label>
                 </div>
                 
+                <div style={{ textAlign: 'center', margin: '12px 0', color: 'rgba(255, 255, 255, 0.5)', fontSize: '13px' }}>
+                  OR
+                </div>
+                
+                <input
+                  type="url"
+                  name="image_url"
+                  value={formData.image_url}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '2px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '16px',
+                    color: '#FFFFFF',
+                    fontSize: '15px',
+                    outline: 'none',
+                    transition: 'all 0.3s ease'
+                  }}
+                  placeholder="Or paste image URL here"
+                />
+                
                 <p style={{ marginTop: '8px', fontSize: '12px', color: 'rgba(255, 255, 255, 0.5)' }}>
-                  PNG, JPG, GIF up to 5MB
+                  Upload: PNG, JPG, GIF up to 5MB | Or use direct image URL
                 </p>
               </div>
 
