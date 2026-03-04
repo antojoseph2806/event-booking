@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
 import '../pages/Home.css'
 
-// Cache configuration
+// Cache configurations
 const CACHE_KEY = 'admin_bookings_cache'
 const CACHE_DURATION = 30000 // 30 seconds
 const REQUEST_TIMEOUT = 5000 // 5 seconds
