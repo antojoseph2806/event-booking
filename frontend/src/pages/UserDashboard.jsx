@@ -585,13 +585,16 @@ export default function UserDashboard() {
               >
                 {displayedEvents.map((event, index) => {
                   const relativeIndex = index - currentCardIndex
+                  const isMobile = window.innerWidth < 768
                   return (
                     <div
                       key={event.id}
                       className="featured-card"
                       data-index={relativeIndex}
                       onClick={() => {
-                        if (relativeIndex === 0) {
+                        // On desktop, all cards are clickable
+                        // On mobile, only the front card (relativeIndex === 0) is clickable
+                        if (!isMobile || relativeIndex === 0) {
                           navigate(`/event/${event.id}`)
                         }
                       }}

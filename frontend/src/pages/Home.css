@@ -2082,6 +2082,8 @@
     margin-bottom: 0;
     cursor: pointer;
     transition: all 0.3s ease !important;
+    pointer-events: auto !important;
+    z-index: auto !important;
   }
   
   .featured-card:hover {
@@ -2159,6 +2161,8 @@
     margin-bottom: 0;
     cursor: pointer;
     transition: all 0.3s ease !important;
+    pointer-events: auto !important;
+    z-index: auto !important;
   }
   
   .featured-card:hover {
